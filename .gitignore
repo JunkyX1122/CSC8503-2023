@@ -20,7 +20,7 @@ cmake_install.cmake
 install_manifest.txt
 compile_commands.json
 CTestTestfile.cmake
-CSC8503.dir/*
+CSC8503/CSC8503.dir/*
 CSC8503CoreClasses/CSC8503CoreClasses.dir/*
 NCLCoreClasses/NCLCoreClasses.dir/*
 OpenGLRendering/OpenGLRendering.dir/*

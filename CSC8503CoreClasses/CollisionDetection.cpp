@@ -121,6 +121,7 @@ bool CollisionDetection::RayOBBIntersection(const Ray& r, const Transform& world
 
 bool CollisionDetection::RaySphereIntersection(const Ray& r, const Transform& worldTransform, const SphereVolume& volume, RayCollision& collision)
 {
+	//GitTest
 	Vector3 spherePos = worldTransform.GetPosition();
 	float sphereRadius = volume.GetRadius();
 
