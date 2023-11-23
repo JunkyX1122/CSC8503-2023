@@ -7,6 +7,7 @@ Comments and queries to: richard-gordon.davison AT ncl.ac.uk
 https://research.ncl.ac.uk/game/
 */
 #pragma once
+#include <algorithm>
 
 namespace NCL::Maths {
 	class Vector2;
@@ -73,8 +74,13 @@ namespace NCL::Maths {
 			return v;
 		}
 
-		static constexpr Vector3 Clamp(const Vector3& input, const Vector3& mins, const Vector3& maxs);
-
+		static Vector3 Clamp(const Vector3& input, const Vector3& mins, const Vector3& maxs) {
+			return Vector3(
+				std::clamp(input.x, mins.x, maxs.x),
+				std::clamp(input.y, mins.y, maxs.y),
+				std::clamp(input.z, mins.z, maxs.z)
+			);
+		}
 		static constexpr float	Dot(const Vector3& a, const Vector3& b) {
 			return (a.x*b.x) + (a.y*b.y) + (a.z*b.z);
 		}
