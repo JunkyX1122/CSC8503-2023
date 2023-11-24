@@ -9,6 +9,7 @@
 #include "Debug.h"
 #include "Window.h"
 #include <functional>
+#include <algorithm>
 using namespace NCL;
 using namespace CSC8503;
 
@@ -278,8 +279,35 @@ split the world up using an acceleration structure, so that we can only
 compare the collisions that we absolutely need to. 
 
 */
-void PhysicsSystem::BroadPhase() {
+void PhysicsSystem::BroadPhase() 
+{
+	broadphaseCollisions.clear();
+	QuadTree<GameObject*> tree(Vector2(1024, 1024), 7, 6);
 
+	std::vector<GameObject*>::const_iterator first;
+	std::vector<GameObject*>::const_iterator last;
+	gameWorld.GetObjectIterators(first, last);
+	for (auto i = first; i != last; i++)
+	{
+		Vector3 halfSizes;
+		if (!(*i)->GetBroadphaseAABB(halfSizes)) continue;
+
+		Vector3 pos = (*i)->GetTransform().GetPosition();
+		tree.Insert(*i, pos, halfSizes);
+	}
+	tree.OperateOnContents([&](std::list<QuadTreeEntry<GameObject*>>& data)
+		{
+			CollisionDetection::CollisionInfo info;
+			for (auto i = data.begin(); i != data.end(); i++)
+			{
+				for (auto j = std::next(i); j != data.end(); j++)
+				{
+					info.a = (std::min)((*i).object, (*j).object);
+					info.b = (std::max)((*i).object, (*j).object);
+					broadphaseCollisions.insert(info);
+				}
+			}
+		});
 }
 
 /*
@@ -287,8 +315,21 @@ void PhysicsSystem::BroadPhase() {
 The broadphase will now only give us likely collisions, so we can now go through them,
 and work out if they are truly colliding, and if so, add them into the main collision list
 */
-void PhysicsSystem::NarrowPhase() {
-
+void PhysicsSystem::NarrowPhase() 
+{
+	for (
+		std::set<CollisionDetection::CollisionInfo>::iterator i = broadphaseCollisions.begin();
+		i != broadphaseCollisions.end();
+		i++)
+	{
+		CollisionDetection::CollisionInfo info = *i;
+		if (CollisionDetection::ObjectIntersection(info.a, info.b, info))
+		{
+			info.framesLeft = numCollisionFrames;
+			ImpulseResolveCollision(*info.a, *info.b, info.point);
+			allCollisions.insert(info);
+		}
+	}
 }
 
 /*

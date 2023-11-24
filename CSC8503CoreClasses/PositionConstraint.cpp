@@ -27,7 +27,6 @@ PositionConstraint::~PositionConstraint()
 void PositionConstraint::UpdateConstraint(float dt)	
 {
 	Vector3 relativePos = objectA->GetTransform().GetPosition() - objectB->GetTransform().GetPosition();
-
 	float currentDistance = relativePos.Length();
 	float offset = distance - currentDistance;
 
