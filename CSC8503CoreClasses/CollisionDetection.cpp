@@ -354,6 +354,17 @@ bool CollisionDetection::OBBIntersection(const OBBVolume& volumeA, const Transfo
 	return false;
 }
 
+Vector3 CollisionDetection::OBBSupport(const Transform& worldTransform, Vector3 worldDir) 
+{
+	Vector3 localDir = worldTransform.GetOrientation().Conjugate() * worldDir;
+	Vector3 vertex;
+	vertex.x = localDir.x < 0 ? -0.5f : 0.5f;
+	vertex.y = localDir.y < 0 ? -0.5f : 0.5f;
+	vertex.z = localDir.z < 0 ? -0.5f : 0.5f;
+
+	return worldTransform.GetMatrix() * vertex;
+}
+
 Matrix4 GenerateInverseView(const Camera &c) {
 	float pitch = c.GetPitch();
 	float yaw	= c.GetYaw();

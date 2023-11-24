@@ -261,9 +261,10 @@ void TutorialGame::InitWorld() {
 	physics->Clear();
 
 	InitMixedGridWorld(15, 15, 3.5f, 3.5f);
-
+	BridgeConstraintTest();
 	InitGameExamples();
 	InitDefaultFloor();
+	
 }
 
 /*
@@ -544,4 +545,32 @@ void TutorialGame::MoveSelectedObject() {
 	}
 }
 
-
+void TutorialGame::BridgeConstraintTest() 
+{
+	std::cout << "THE BRIDGE\n";
+	Vector3 cubeSize = Vector3(3, 3, 3);
+	
+	float invCubeMass = 5;
+	int numLinks = 20;
+	float maxDistance = 15; 
+	float cubeDistance = 10; 
+	
+	Vector3 startPos = Vector3(100, 100, 100);
+	
+	GameObject * start = AddCubeToWorld(startPos + Vector3(0, 0, 0), cubeSize, 0);
+	GameObject * end = AddCubeToWorld(startPos + Vector3((numLinks + 2) * cubeDistance, 0, 0), cubeSize, 0);
+	
+	GameObject * previous = start;
+	
+	for (int i = 0; i < numLinks; ++i) 
+	{
+		//Debug::DrawLine(Vector3(0, 0, 0), startPos + Vector3((i + 1) * cubeDistance, 0, 0), Vector4(0, 0, 1, 1),100.0f);
+		GameObject * block = AddCubeToWorld(startPos + Vector3((i + 1) * cubeDistance, 0, 0), cubeSize, invCubeMass);
+		PositionConstraint * constraint = new PositionConstraint(previous, block, maxDistance);
+		world->AddConstraint(constraint);
+		previous = block;
+	}
+	PositionConstraint* constraint = new PositionConstraint(previous, end, maxDistance);
+	world->AddConstraint(constraint);
+	
+}
