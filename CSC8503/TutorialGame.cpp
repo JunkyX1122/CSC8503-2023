@@ -28,7 +28,8 @@ TutorialGame::TutorialGame() : controller(*Window::GetWindow()->GetKeyboard(), *
 	forceMagnitude	= 10.0f;
 	useGravity		= false;
 	inSelectionMode = false;
-
+	
+	testStateObject = nullptr;
 	world->GetMainCamera().SetController(controller);
 
 	controller.MapAxis(0, "Sidestep");
@@ -79,6 +80,7 @@ TutorialGame::~TutorialGame()	{
 }
 
 void TutorialGame::UpdateGame(float dt) {
+	
 	if (!inSelectionMode) {
 		world->GetMainCamera().UpdateCamera(dt);
 	}
@@ -132,11 +134,15 @@ void TutorialGame::UpdateGame(float dt) {
 
 	SelectObject();
 	MoveSelectedObject();
-
+	if (testStateObject)
+	{
+		Debug::DrawLine(Vector3(0, 0, 0), testStateObject->GetTransform().GetPosition(), Vector4(0, 0, 1, 1));
+		testStateObject->Update(dt);
+	}
 	world->UpdateWorld(dt);
 	renderer->Update(dt);
 	physics->Update(dt);
-
+	
 	renderer->Render();
 	Debug::UpdateRenderables(dt);
 }
@@ -259,6 +265,9 @@ void TutorialGame::InitCamera() {
 void TutorialGame::InitWorld() {
 	world->ClearAndErase();
 	physics->Clear();
+
+	
+	testStateObject = AddStateObjectToWorld(Vector3(0, 200, 0));
 
 	InitMixedGridWorld(15, 15, 3.5f, 3.5f);
 	BridgeConstraintTest();
@@ -393,6 +402,27 @@ GameObject* TutorialGame::AddEnemyToWorld(const Vector3& position) {
 
 GameObject* TutorialGame::AddBonusToWorld(const Vector3& position) {
 	GameObject* apple = new GameObject();
+
+	SphereVolume* volume = new SphereVolume(0.5f);
+	apple->SetBoundingVolume((CollisionVolume*)volume);
+	apple->GetTransform()
+		.SetScale(Vector3(2, 2, 2))
+		.SetPosition(position);
+
+	apple->SetRenderObject(new RenderObject(&apple->GetTransform(), bonusMesh, nullptr, basicShader));
+	apple->SetPhysicsObject(new PhysicsObject(&apple->GetTransform(), apple->GetBoundingVolume()));
+
+	apple->GetPhysicsObject()->SetInverseMass(1.0f);
+	apple->GetPhysicsObject()->InitSphereInertia();
+
+	world->AddGameObject(apple);
+
+	return apple;
+}
+
+StateGameObject* TutorialGame::AddStateObjectToWorld(const Vector3& position)
+{
+	StateGameObject* apple = new StateGameObject();
 
 	SphereVolume* volume = new SphereVolume(0.5f);
 	apple->SetBoundingVolume((CollisionVolume*)volume);
