@@ -19,6 +19,10 @@
 
 #include "PushdownState.h"
 
+#include "PauseScreen.h"
+#include "GameScreen.h"
+#include "IntroScreen.h"
+
 #include "BehaviourNode.h"
 #include "BehaviourSelector.h"
 #include "BehaviourSequence.h"
@@ -58,6 +62,7 @@ void TestStateMachine()
 	}
 }
 vector<Vector3> testNodes;
+
 void TestPathfinding() 
 {
 	NavigationGrid grid("TestGrid1.txt");
@@ -223,6 +228,18 @@ void TestBehaviourTree()
 	std::cout << "end :)\n";
 }
 
+void TestPushdownAutomata(Window* w)
+{
+	PushdownMachine machine(new IntroScreen());
+	while (w->UpdateWindow()) 
+	{
+		float dt = w->GetTimer().GetTimeDeltaSeconds();
+		if (!machine.Update(dt)) 
+		{
+			return;
+		}
+	}
+}
 /*
 
 The main function should look pretty familar to you!
@@ -241,7 +258,8 @@ int main() {
 	if (!w->HasInitialised()) {
 		return -1;
 	}	
-	TestBehaviourTree();
+	//TestBehaviourTree();
+	TestPushdownAutomata(w);
 
 	w->ShowOSPointer(false);
 	w->LockMouseToWindow(true);

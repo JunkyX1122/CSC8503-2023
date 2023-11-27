@@ -4,19 +4,25 @@ set(PROJECT_NAME CSC8503)
 # Source groups
 ################################################################################
 set(Header_Files
+	"GameScreen.h"
     "GameTechRenderer.h"
+	"IntroScreen.h"
     "NetworkedGame.h"
     "NetworkPlayer.h"
+	"PauseScreen.h"
     "StateGameObject.h"
     "TutorialGame.h"
 )
 source_group("Header Files" FILES ${Header_Files})
 
 set(Source_Files
+	"GameScreen.cpp"
     "GameTechRenderer.cpp"
+	"IntroScreen.cpp"
     "Main.cpp"
     "NetworkedGame.cpp"
     "NetworkPlayer.cpp"
+	"PauseScreen.cpp"
     "StateGameObject.cpp"
     "TutorialGame.cpp"
 )
