@@ -130,7 +130,7 @@ void TutorialGame::UpdateGame(float dt) {
 		}
 	}
 
-	Debug::DrawLine(Vector3(), Vector3(0, 100, 0), Vector4(1, 0, 0, 1));
+	//Debug::DrawLine(Vector3(), Vector3(0, 100, 0), Vector4(1, 0, 0, 1));
 
 	SelectObject();
 	MoveSelectedObject();
@@ -272,7 +272,7 @@ void TutorialGame::InitWorld() {
 	InitMixedGridWorld(15, 15, 3.5f, 3.5f);
 	BridgeConstraintTest();
 	InitGameExamples();
-	InitDefaultFloor();
+	//InitDefaultFloor();
 	
 }
 
@@ -360,7 +360,7 @@ GameObject* TutorialGame::AddCapsuleToWorld(const Vector3& position, float halfH
 
 	capsule->GetTransform()
 		.SetPosition(position)
-		.SetScale(Vector3(radius, halfHeight, radius) * 2);
+		.SetScale(Vector3(radius, halfHeight, radius));
 
 	capsule->SetRenderObject(new RenderObject(&capsule->GetTransform(), capsuleMesh, basicTex, basicShader));
 	capsule->SetPhysicsObject(new PhysicsObject(&capsule->GetTransform(), capsule->GetBoundingVolume()));
@@ -485,17 +485,19 @@ void TutorialGame::InitSphereGridWorld(int numRows, int numCols, float rowSpacin
 void TutorialGame::InitMixedGridWorld(int numRows, int numCols, float rowSpacing, float colSpacing) {
 	float sphereRadius = 1.0f;
 	Vector3 cubeDims = Vector3(1, 1, 1);
+	AddCapsuleToWorld(Vector3(0, 0, 0), sphereRadius * 20.0f, sphereRadius * 20.0f);
 
+	//AddCapsuleToWorld(Vector3(0, 0, 0), cubeDims.y * 20, sphereRadius * 20);
 	for (int x = 0; x < numCols; ++x) {
 		for (int z = 0; z < numRows; ++z) {
 			Vector3 position = Vector3(x * colSpacing, 10.0f, z * rowSpacing);
 
 			if (rand() % 2) {
-				AddCubeToWorld(position, cubeDims);
+				//AddCubeToWorld(position, cubeDims);
 			}
 			else {
 				//AddSphereToWorld(position, sphereRadius);
-				AddCapsuleToWorld(position, cubeDims.y, sphereRadius);
+				//AddCapsuleToWorld(position, cubeDims.y, sphereRadius);
 			}
 		}
 	}
@@ -543,13 +545,14 @@ bool TutorialGame::SelectObject() {
 			RayCollision closestCollision;
 			if (world->Raycast(ray, closestCollision, true)) 
 			{
-				Debug::DrawLine(ray.GetPosition(), closestCollision.collidedAt, Vector4(0, 1, 0, 1), 5.0f);
+				//Debug::DrawLine(ray.GetPosition(), closestCollision.collidedAt, Vector4(0, 1, 0, 1), 500.0f);
 				selectionObject = (GameObject*)closestCollision.node;
 
 				selectionObject->GetRenderObject()->SetColour(Vector4(0, 1, 0, 1));
 				return true;
 			}
 			else {
+				//Debug::DrawLine(ray.GetPosition(), ray.GetDirection() * 10000.0f, Vector4(1, 0, 0, 1), 500.0f);
 				return false;
 			}
 		}
