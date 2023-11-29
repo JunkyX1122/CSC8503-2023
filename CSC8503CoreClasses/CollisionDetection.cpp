@@ -141,7 +141,52 @@ bool CollisionDetection::RaySphereIntersection(const Ray& r, const Transform& wo
 	return true;
 }
 
-bool CollisionDetection::RayCapsuleIntersection(const Ray& r, const Transform& worldTransform, const CapsuleVolume& volume, RayCollision& collision) {
+bool CollisionDetection::RayCapsuleIntersection(const Ray& r, const Transform& worldTransform, const CapsuleVolume& volume, RayCollision& collision) 
+{
+	Quaternion orientation = worldTransform.GetOrientation();
+	Vector3 position = worldTransform.GetPosition();
+
+	Matrix3 transform = Matrix3(orientation);
+	Matrix3 invTransform = Matrix3(orientation.Conjugate());
+
+	Vector3 localRayPos = r.GetPosition() - position;
+
+	Ray tempRay(invTransform * localRayPos, invTransform * r.GetDirection());
+
+	Transform endTransform;
+
+	Vector3 capsuleBottom = Vector3(0, -volume.GetHalfHeight(), 0);
+	Vector3 capsuleTop	  = Vector3(0,  volume.GetHalfHeight(), 0);
+	Vector3 rayStart = tempRay.GetPosition();
+	Vector3 rayEnd = tempRay.GetDirection() * FLT_MAX;
+
+	Vector3 capsuleVector = capsuleTop - capsuleBottom;
+	Vector3 rayVector = rayEnd - rayStart;
+
+	Vector3 CMinusR = rayVector - capsuleVector;
+
+	float dotRR = Vector3::Dot(rayVector, rayVector);
+	float dotCC = Vector3::Dot(capsuleVector, capsuleVector);
+	float dotRC = Vector3::Dot(rayVector, capsuleVector);
+	float dotCMR_C = Vector3::Dot(CMinusR, capsuleVector);
+	float dotCMR_R = Vector3::Dot(CMinusR, rayVector);
+	float denom = dotRC * dotRC - dotRR * dotCC;
+
+	float closeCap = 0;
+	float closeRay = 0;
+	if (denom == 0) 
+	{
+		closeCap = 0.0f;
+		closeRay = (dotCC * closeCap - dotCMR_C) / dotRC;
+	}
+
+	//SPHERE SHIT HERE!
+	endTransform.SetPosition(Vector3(0, 0, 0));
+
+
+	bool collided = RaySphereIntersection(tempRay, endTransform, volume.GetRadius(), collision);
+	if (collided) collision.collidedAt = transform * collision.collidedAt + position;
+
 	return false;
 }
 

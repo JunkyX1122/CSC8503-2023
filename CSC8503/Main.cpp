@@ -244,10 +244,10 @@ void TestPushdownAutomata(Window* w)
 	}
 }
 
-class TestPacketReciever : public PacketReceiver
+class TestPacketReceiver : public PacketReceiver
 {
 public:
-	TestPacketReciever(string name)
+	TestPacketReceiver(string name)
 	{
 		this->name = name;
 	}
@@ -269,10 +269,11 @@ protected:
 
 void TestNetworking()
 {
+	///*
 	NetworkBase::Initialise();
 
-	TestPacketReciever serverReceiver("Server");
-	TestPacketReciever clientReceiver("Client");
+	TestPacketReceiver serverReceiver("Server");
+	TestPacketReceiver clientReceiver("Client");
 
 	int port = NetworkBase::GetDefaultPort();
 
@@ -286,9 +287,11 @@ void TestNetworking()
 
 	for (int i = 0; i < 100; i++)
 	{
-		server->SendGlobalPacket(StringPacket("Server says hello! " + std::to_string(i)));
+		StringPacket p("Server says hello! " + std::to_string(i));
+		server->SendGlobalPacket(p);
 
-		client->SendPacket(StringPacket("Client says hello! " + std::to_string(i)));
+		p = StringPacket("Client says hello! " + std::to_string(i));
+		client->SendPacket(p);
 
 		server->UpdateServer();
 		client->UpdateClient();
@@ -296,6 +299,7 @@ void TestNetworking()
 		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}
 	NetworkBase::Destroy();
+	//*/
 }
 /*
 

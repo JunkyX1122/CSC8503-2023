@@ -352,6 +352,27 @@ GameObject* TutorialGame::AddCubeToWorld(const Vector3& position, Vector3 dimens
 	return cube;
 }
 
+GameObject* TutorialGame::AddCapsuleToWorld(const Vector3& position, float halfHeight, float radius , float inverseMass) {
+	GameObject* capsule = new GameObject();
+
+	CapsuleVolume* volume = new CapsuleVolume(halfHeight, radius);
+	capsule->SetBoundingVolume((CollisionVolume*)volume);
+
+	capsule->GetTransform()
+		.SetPosition(position)
+		.SetScale(Vector3(radius, halfHeight, radius) * 2);
+
+	capsule->SetRenderObject(new RenderObject(&capsule->GetTransform(), capsuleMesh, basicTex, basicShader));
+	capsule->SetPhysicsObject(new PhysicsObject(&capsule->GetTransform(), capsule->GetBoundingVolume()));
+
+	capsule->GetPhysicsObject()->SetInverseMass(inverseMass);
+	capsule->GetPhysicsObject()->InitCubeInertia();
+
+	world->AddGameObject(capsule);
+
+	return capsule;
+}
+
 GameObject* TutorialGame::AddPlayerToWorld(const Vector3& position) {
 	float meshSize		= 1.0f;
 	float inverseMass	= 0.5f;
@@ -473,7 +494,8 @@ void TutorialGame::InitMixedGridWorld(int numRows, int numCols, float rowSpacing
 				AddCubeToWorld(position, cubeDims);
 			}
 			else {
-				AddSphereToWorld(position, sphereRadius);
+				//AddSphereToWorld(position, sphereRadius);
+				AddCapsuleToWorld(position, cubeDims.y, sphereRadius);
 			}
 		}
 	}
