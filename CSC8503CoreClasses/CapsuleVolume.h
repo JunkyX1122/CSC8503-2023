@@ -1,6 +1,5 @@
 #pragma once
 #include "CollisionVolume.h"
-
 namespace NCL {
     class CapsuleVolume : public CollisionVolume
     {
@@ -20,7 +19,6 @@ namespace NCL {
         float GetHalfHeight() const {
             return halfHeight;
         }
-
     protected:
         float radius;
         float halfHeight;

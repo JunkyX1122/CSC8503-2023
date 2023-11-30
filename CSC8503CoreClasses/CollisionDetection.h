@@ -70,6 +70,17 @@ namespace NCL {
 			const SphereVolume& volumeB, const Transform& worldTransformB, CollisionInfo& collisionInfo);
 
 		//TODO ADD THIS PROPERLY
+
+		static void ClosestPointsTwoLines(float* ratio1, float* ratio2, Vector3 firstLineStart, Vector3 firstLineEnd, Vector3 secondLineStart, Vector3 secondLineEnd);
+		static void ClosestPointsPointLine(float* lineRatio, Vector3 point, Vector3 lineStart, Vector3 lineEnd);
+		static Vector3 ClosestPointAABBPoint(Vector3 point, Vector3 AABBPos, Vector3 halfSizes);
+		static Vector3 GetCapsuleDirection(const Transform& worldTransform)
+		{
+			return Matrix3(worldTransform.GetOrientation()) * Vector3(0, 1, 0);
+		}
+
+
+
 		static bool RayBoxIntersection(const Ray&r, const Vector3& boxPos, const Vector3& boxSize, RayCollision& collision);
 
 		static Ray BuildRayFromMouse(const PerspectiveCamera& c);
@@ -81,8 +92,7 @@ namespace NCL {
 		static bool RayOBBIntersection(const Ray&r, const Transform& worldTransform, const OBBVolume&	volume, RayCollision& collision);
 		static bool RaySphereIntersection(const Ray&r, const Transform& worldTransform, const SphereVolume& volume, RayCollision& collision);
 		static bool RayCapsuleIntersection(const Ray& r, const Transform& worldTransform, const CapsuleVolume& volume, RayCollision& collision);
-
-
+		
 		static bool RayPlaneIntersection(const Ray&r, const Plane&p, RayCollision& collisions);
 
 		static bool	AABBTest(const Vector3& posA, const Vector3& posB, const Vector3& halfSizeA, const Vector3& halfSizeB);

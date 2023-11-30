@@ -270,9 +270,9 @@ void TutorialGame::InitWorld() {
 	testStateObject = AddStateObjectToWorld(Vector3(0, 200, 0));
 
 	InitMixedGridWorld(15, 15, 3.5f, 3.5f);
-	BridgeConstraintTest();
-	InitGameExamples();
-	//InitDefaultFloor();
+	//BridgeConstraintTest();
+	//InitGameExamples();
+	InitDefaultFloor();
 	
 }
 
@@ -485,8 +485,8 @@ void TutorialGame::InitSphereGridWorld(int numRows, int numCols, float rowSpacin
 void TutorialGame::InitMixedGridWorld(int numRows, int numCols, float rowSpacing, float colSpacing) {
 	float sphereRadius = 1.0f;
 	Vector3 cubeDims = Vector3(1, 1, 1);
-	AddCapsuleToWorld(Vector3(0, 0, 0), sphereRadius * 20.0f, sphereRadius * 20.0f);
-
+	AddCapsuleToWorld(Vector3(50, 75, 0), sphereRadius * 20.0f, sphereRadius * 20.0f);
+	AddSphereToWorld(Vector3(50, 25, 0), sphereRadius * 10.0f);
 	//AddCapsuleToWorld(Vector3(0, 0, 0), cubeDims.y * 20, sphereRadius * 20);
 	for (int x = 0; x < numCols; ++x) {
 		for (int z = 0; z < numRows; ++z) {

@@ -158,63 +158,76 @@ bool CollisionDetection::RaySphereIntersection(const Ray& r, const Transform& wo
 
 bool CollisionDetection::RayCapsuleIntersection(const Ray& r, const Transform& worldTransform, const CapsuleVolume& volume, RayCollision& collision) 
 {
-
-	//Ray tempRay(r.GetPosition(), r.GetDirection() * 1000.0f);
-
 	Vector3 capsuleCentre = worldTransform.GetPosition();
-	Quaternion capsuleRotation = worldTransform.GetOrientation();
-	Vector3 capsuleDir = Matrix3(capsuleRotation) * Vector3(0, 1, 0);
+	Vector3 capsuleDir = GetCapsuleDirection(worldTransform);
 
-	Vector3 capsuleBottom = capsuleCentre - capsuleDir * volume.GetHalfHeight()/2;
-	Vector3 capsuleTop	  = capsuleCentre + capsuleDir * volume.GetHalfHeight()/2;
+	Vector3 capsuleBottom = capsuleCentre - capsuleDir * volume.GetHalfHeight() / 2;
+	Vector3 capsuleTop = capsuleCentre + capsuleDir * volume.GetHalfHeight() / 2;
 	Vector3 rayStart = r.GetPosition();
 	Vector3 rayEnd = r.GetDirection() * 1000.0f;
 
-	Vector3 capsuleVector = capsuleTop - capsuleBottom;
-	Vector3 rayVector = rayEnd - rayStart;
-
-	Debug::DrawLine(capsuleBottom, capsuleBottom + capsuleVector, Vector4(1, 0, 0, 1), 100.0f);
-	Debug::DrawLine(rayStart, rayStart + rayVector, Vector4(1, 0, 0, 1), 100.0f);
-
-
-	Vector3 RMinusC = rayStart - capsuleBottom;
-
-	float dotRR = Vector3::Dot(rayVector, rayVector);
-	float dotCC = Vector3::Dot(capsuleVector, capsuleVector);
-	float dotRC = Vector3::Dot(rayVector, capsuleVector);
-	float dotRMC_C = Vector3::Dot(RMinusC, capsuleVector);
-	float dotRMC_R = Vector3::Dot(RMinusC, rayVector);
-
-	float dotRC2 = dotRC * dotRC;
-	float dotRRdotCC = dotRR * dotCC;
-	float denom = (dotRC2 - dotRRdotCC);
-
 	float closeCap = 0.0f;
 	float closeRay = 0.0f;
-	if (denom == 0) 
-	{
-		closeCap = 0.0f;
-		closeRay = (dotCC * closeCap - dotRMC_C) / dotRC;
-	}
-	else
-	{
-		closeCap =  (dotRMC_R * dotRC - dotRR * dotRMC_C) / denom;
-		closeRay = (-dotRMC_C * dotRC + dotCC * dotRMC_R) / denom;
-	}
 
-	closeCap = std::clamp(closeCap, 0.0f, 1.0f);
-	closeRay = std::clamp(closeRay, 0.0f, 1.0f);
+	ClosestPointsTwoLines(&closeCap, &closeRay, capsuleBottom, capsuleTop, rayStart, rayEnd);
 
-	Vector3 capsulePoint = capsuleBottom + capsuleVector * closeCap;
-	Vector3 rayPoint = rayStart + rayVector * closeRay;
+	Vector3 capsulePoint = capsuleBottom + (capsuleTop - capsuleBottom) * closeCap;
+	Vector3 rayPoint = rayStart + (rayEnd - rayStart) * closeRay;
 	
-
 	Transform endTransform;
 	endTransform.SetPosition(capsulePoint);
 
-
 	bool collided = RaySphereIntersection(r, endTransform, volume.GetRadius()/2, collision);
 	return collided;
+}
+
+void CollisionDetection::ClosestPointsTwoLines(float* ratio1, float* ratio2, Vector3 firstLineStart, Vector3 firstLineEnd, Vector3 secondLineStart, Vector3 secondLineEnd)
+{
+	Vector3 firstLineVector = firstLineEnd - firstLineStart;
+	Vector3 secondLineVector = secondLineEnd - secondLineStart;
+
+	Vector3 SMinusF = secondLineStart - firstLineStart;
+
+	float dotSS = Vector3::Dot(secondLineVector, secondLineVector);
+	float dotFF = Vector3::Dot(firstLineVector, firstLineVector);
+	float dotSF = Vector3::Dot(secondLineVector, firstLineVector);
+	float dotSMF_F = Vector3::Dot(SMinusF, firstLineVector);
+	float dotSMF_S = Vector3::Dot(SMinusF, secondLineVector);
+
+	float dotSF2 = dotSF * dotSF;
+	float dotSSdotFF = dotSS * dotFF;
+	float denom = (dotSF2 - dotSSdotFF);
+
+
+	if (denom == 0)
+	{
+		*ratio1 = 0.0f;
+		*ratio2 = (dotFF * (*ratio1) - dotSMF_F) / dotSF;
+	}
+	else
+	{
+		*ratio1 = (dotSMF_S * dotSF - dotSS * dotSMF_F) / denom;
+		*ratio2 = (-dotSMF_F * dotSF + dotFF * dotSMF_S) / denom;
+	}
+
+	*ratio1 = std::clamp((*ratio1), 0.0f, 1.0f);
+	*ratio2 = std::clamp((*ratio2), 0.0f, 1.0f);
+}
+void CollisionDetection::ClosestPointsPointLine(float* lineRatio, Vector3 point, Vector3 lineStart, Vector3 lineEnd)
+{
+	Vector3 heading = (lineEnd - lineStart);
+	float magnitudeMax = heading.Length();
+	heading.Normalise();
+
+	Vector3 lhs = point - lineStart;
+	float dotP = Vector3::Dot(lhs, heading) / magnitudeMax;
+
+
+	*lineRatio = std::clamp((dotP), 0.0f, 1.0f);
+}
+Vector3 CollisionDetection::ClosestPointAABBPoint(Vector3 point, Vector3 AABBPos, Vector3 halfSizes)
+{
+
 }
 
 bool CollisionDetection::ObjectIntersection(GameObject* a, GameObject* b, CollisionInfo& collisionInfo) {
@@ -359,6 +372,30 @@ bool CollisionDetection::AABBIntersection(const AABBVolume& volumeA, const Trans
 bool CollisionDetection::SphereIntersection(const SphereVolume& volumeA, const Transform& worldTransformA,
 	const SphereVolume& volumeB, const Transform& worldTransformB, CollisionInfo& collisionInfo) 
 {
+	int maxLines = 32;
+	for (int i = 0; i < maxLines; i++)
+	{
+		Vector3 spherePos = worldTransformA.GetPosition();
+		float sphereRadius = volumeA.GetRadius();
+		float pitch = (2 * PI) / 64 * i;
+		float yaw = (2 * PI * 5) / 64 * i;
+		float x = volumeA.GetRadius() * cos(pitch) * cos(yaw);
+		float y = volumeA.GetRadius() * sin(yaw);
+		float z = volumeA.GetRadius() * sin(pitch) * cos(yaw);
+		Debug::DrawLine(spherePos, spherePos + Vector3(x, y, z), Vector4(0, 1, 0, 1));
+	}
+	for (int i = 0; i < maxLines; i++)
+	{
+		Vector3 spherePos = worldTransformB.GetPosition();
+		float sphereRadius = volumeB.GetRadius();
+		float pitch = (2 * PI) / 64 * i;
+		float yaw = (2 * PI * 5) / 64 * i;
+		float x = volumeB.GetRadius() * cos(pitch) * cos(yaw);
+		float y = volumeB.GetRadius() * sin(yaw);
+		float z = volumeB.GetRadius() * sin(pitch) * cos(yaw);
+		Debug::DrawLine(spherePos, spherePos + Vector3(x, y, z), Vector4(0, 1, 0, 1));
+	}
+
 	float radii = volumeA.GetRadius() + volumeB.GetRadius();
 	Vector3 delta = worldTransformB.GetPosition() - worldTransformA.GetPosition();
 
@@ -411,14 +448,37 @@ bool  CollisionDetection::OBBSphereIntersection(const OBBVolume& volumeA, const 
 
 bool CollisionDetection::AABBCapsuleIntersection(
 	const CapsuleVolume& volumeA, const Transform& worldTransformA,
-	const AABBVolume& volumeB, const Transform& worldTransformB, CollisionInfo& collisionInfo) {
+	const AABBVolume& volumeB, const Transform& worldTransformB, CollisionInfo& collisionInfo) 
+{
+	
+
+
 	return false;
 }
 
 bool CollisionDetection::SphereCapsuleIntersection(
 	const CapsuleVolume& volumeA, const Transform& worldTransformA,
-	const SphereVolume& volumeB, const Transform& worldTransformB, CollisionInfo& collisionInfo) {
-	return false;
+	const SphereVolume& volumeB, const Transform& worldTransformB, CollisionInfo& collisionInfo) 
+{
+	Vector3 capsuleCentre = worldTransformA.GetPosition();
+	Vector3 capsuleDir = GetCapsuleDirection(worldTransformA);
+
+	Vector3 capsuleBottom = capsuleCentre - capsuleDir * volumeA.GetHalfHeight() / 2;
+	Vector3 capsuleTop = capsuleCentre + capsuleDir * volumeA.GetHalfHeight() / 2;
+
+	float closeCap = 0.0f;
+	
+	ClosestPointsPointLine(&closeCap, worldTransformB.GetPosition(), capsuleBottom, capsuleTop);
+
+	Vector3 capsulePoint = capsuleBottom + (capsuleTop - capsuleBottom) * closeCap;
+
+	SphereVolume tempSphere(volumeA.GetRadius()/2);
+	Transform tempWorldTransform = worldTransformA;
+	tempWorldTransform.SetPosition(capsulePoint);
+
+	bool collision = SphereIntersection(tempSphere, tempWorldTransform, volumeB, worldTransformB, collisionInfo);
+	if (collision) std::cout << "YAY\n";
+	return collision;
 }
 
 bool CollisionDetection::OBBIntersection(const OBBVolume& volumeA, const Transform& worldTransformA,
