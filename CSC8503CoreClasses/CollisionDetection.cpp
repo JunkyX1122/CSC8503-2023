@@ -289,6 +289,16 @@ bool CollisionDetection::ObjectIntersection(GameObject* a, GameObject* b, Collis
 		return AABBCapsuleIntersection((CapsuleVolume&)*volB, transformB, (AABBVolume&)*volA, transformA, collisionInfo);
 	}
 
+
+	if (volA->type == VolumeType::Capsule && volB->type == VolumeType::OBB) {
+		return OBBCapsuleIntersection((CapsuleVolume&)*volA, transformA, (OBBVolume&)*volB, transformB, collisionInfo);
+	}
+	if (volB->type == VolumeType::Capsule && volA->type == VolumeType::OBB) {
+		collisionInfo.a = b;
+		collisionInfo.b = a;
+		return OBBCapsuleIntersection((CapsuleVolume&)*volB, transformB, (OBBVolume&)*volA, transformA, collisionInfo);
+	}
+
 	return false;
 }
 
@@ -471,7 +481,7 @@ bool CollisionDetection::AABBCapsuleIntersection(
 		Vector3 boxSize = volumeB.GetHalfDimensions();
 		Vector3 delta = testPoints[i] - worldTransformB.GetPosition();
 		Vector3 closestPointOnBoxTest = worldTransformB.GetPosition() + Vector3::Clamp(delta, -boxSize, boxSize);
-		Debug::DrawLine(closestPointOnBoxTest, testPoints[i], Vector4(1, 1, 0.5f, 1));
+		//Debug::DrawLine(closestPointOnBoxTest, testPoints[i], Vector4(1, 1, 0.5f, 1));
 
 		float closeCap = 0.0f;
 		ClosestPointsPointLine(&closeCap, closestPointOnBoxTest, capsuleBottom, capsuleTop);
@@ -485,7 +495,7 @@ bool CollisionDetection::AABBCapsuleIntersection(
 			maxDist = distTest;
 		}
 
-		Debug::DrawLine(closestPointOnBoxTest, capsulePointTest, Vector4(1, 0.5f, 0.5f, 1));
+		//Debug::DrawLine(closestPointOnBoxTest, capsulePointTest, Vector4(1, 0.5f, 0.5f, 1));
 
 	}
 	SphereVolume tempSphere(volumeA.GetRadius() / 2);
@@ -493,7 +503,7 @@ bool CollisionDetection::AABBCapsuleIntersection(
 	tempWorldTransform.SetPosition(capsulePoint);
 	tempWorldTransform.SetOrientation(worldTransformA.GetOrientation());
 
-	int maxLines = 32;
+	int maxLines = 0;
 	for (int i = 0; i < maxLines; i++)
 	{
 		float pitch = (2 * PI) / 64 * i;
@@ -545,6 +555,17 @@ bool CollisionDetection::SphereCapsuleIntersection(
 	bool collision = SphereIntersection(tempSphere, tempWorldTransform, volumeB, worldTransformB, collisionInfo);
 	return collision;
 }
+
+bool CollisionDetection::OBBCapsuleIntersection(
+	const CapsuleVolume& volumeA, const Transform& worldTransformA,
+	const OBBVolume& volumeB, const Transform& worldTransformB, CollisionInfo& collisionInfo)
+{
+	return false;
+}
+
+
+
+
 
 bool CollisionDetection::OBBIntersection(const OBBVolume& volumeA, const Transform& worldTransformA,
 	const OBBVolume& volumeB, const Transform& worldTransformB, CollisionInfo& collisionInfo) {
