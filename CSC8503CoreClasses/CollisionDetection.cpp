@@ -126,17 +126,7 @@ bool CollisionDetection::RaySphereIntersection(const Ray& r, const Transform& wo
 	float sphereRadius = volume.GetRadius();
 
 	//Debug::DrawLine(r.GetPosition(), r.GetDirection() * 1000.0f, Vector4(0, 0, 1, 1),100.0f);
-	int maxLines = 0;
-	for (int i = 0; i < maxLines; i++)
-	{
-		float pitch = (2 * PI) / 64 * i;
-		float yaw = (2 * PI * 5) / 64 * i;
-		float x = volume.GetRadius() * cos(pitch) * cos(yaw);
-		float y = volume.GetRadius() * sin(yaw);
-		float z = volume.GetRadius() * sin(pitch) * cos(yaw);
-		Debug::DrawLine(spherePos, spherePos + Vector3(x,y,z), Vector4(0, 1, 0, 1), 100.0f);
-
-	}
+	
 	Vector3 dir = (spherePos - r.GetPosition());
 
 	float sphereProj = Vector3::Dot(dir, r.GetDirection());
@@ -227,7 +217,7 @@ void CollisionDetection::ClosestPointsPointLine(float* lineRatio, Vector3 point,
 }
 Vector3 CollisionDetection::ClosestPointAABBPoint(Vector3 point, Vector3 AABBPos, Vector3 halfSizes)
 {
-
+	return Vector3(0,0,0);
 }
 
 bool CollisionDetection::ObjectIntersection(GameObject* a, GameObject* b, CollisionInfo& collisionInfo) {
@@ -372,30 +362,6 @@ bool CollisionDetection::AABBIntersection(const AABBVolume& volumeA, const Trans
 bool CollisionDetection::SphereIntersection(const SphereVolume& volumeA, const Transform& worldTransformA,
 	const SphereVolume& volumeB, const Transform& worldTransformB, CollisionInfo& collisionInfo) 
 {
-	int maxLines = 32;
-	for (int i = 0; i < maxLines; i++)
-	{
-		Vector3 spherePos = worldTransformA.GetPosition();
-		float sphereRadius = volumeA.GetRadius();
-		float pitch = (2 * PI) / 64 * i;
-		float yaw = (2 * PI * 5) / 64 * i;
-		float x = volumeA.GetRadius() * cos(pitch) * cos(yaw);
-		float y = volumeA.GetRadius() * sin(yaw);
-		float z = volumeA.GetRadius() * sin(pitch) * cos(yaw);
-		Debug::DrawLine(spherePos, spherePos + Vector3(x, y, z), Vector4(0, 1, 0, 1));
-	}
-	for (int i = 0; i < maxLines; i++)
-	{
-		Vector3 spherePos = worldTransformB.GetPosition();
-		float sphereRadius = volumeB.GetRadius();
-		float pitch = (2 * PI) / 64 * i;
-		float yaw = (2 * PI * 5) / 64 * i;
-		float x = volumeB.GetRadius() * cos(pitch) * cos(yaw);
-		float y = volumeB.GetRadius() * sin(yaw);
-		float z = volumeB.GetRadius() * sin(pitch) * cos(yaw);
-		Debug::DrawLine(spherePos, spherePos + Vector3(x, y, z), Vector4(0, 1, 0, 1));
-	}
-
 	float radii = volumeA.GetRadius() + volumeB.GetRadius();
 	Vector3 delta = worldTransformB.GetPosition() - worldTransformA.GetPosition();
 
@@ -418,6 +384,7 @@ bool CollisionDetection::SphereIntersection(const SphereVolume& volumeA, const T
 bool CollisionDetection::AABBSphereIntersection(const AABBVolume& volumeA, const Transform& worldTransformA,
 	const SphereVolume& volumeB, const Transform& worldTransformB, CollisionInfo& collisionInfo) 
 {
+	
 	Vector3 boxSize = volumeA.GetHalfDimensions();
 
 	Vector3 delta = worldTransformB.GetPosition() - worldTransformA.GetPosition();
@@ -442,17 +409,115 @@ bool CollisionDetection::AABBSphereIntersection(const AABBVolume& volumeA, const
 }
 
 bool  CollisionDetection::OBBSphereIntersection(const OBBVolume& volumeA, const Transform& worldTransformA,
-	const SphereVolume& volumeB, const Transform& worldTransformB, CollisionInfo& collisionInfo) {
-	return false;
+	const SphereVolume& volumeB, const Transform& worldTransformB, CollisionInfo& collisionInfo) 
+{
+
+
+	Quaternion orientation = worldTransformA.GetOrientation();
+	Vector3 position = worldTransformA.GetPosition();
+
+	Matrix3 transform = Matrix3(orientation);
+	Matrix3 invTransform = Matrix3(orientation.Conjugate());
+
+	Vector3 localSpherePos = invTransform * (worldTransformB.GetPosition() - position);
+	Quaternion localSphereOri = invTransform * worldTransformB.GetOrientation();
+
+	SphereVolume tempSphere(volumeB.GetRadius());
+	Transform tempWorldSphereTransform = worldTransformB;
+	tempWorldSphereTransform.SetPosition(localSpherePos + worldTransformA.GetPosition());
+	tempWorldSphereTransform.SetOrientation(localSphereOri);
+
+	int maxLines = 32;
+	for (int i = 0; i < maxLines; i++)
+	{
+		float pitch = (2 * PI) / 64 * i;
+		float yaw = (2 * PI * 5) / 64 * i;
+		float x = tempSphere.GetRadius() * cos(pitch) * cos(yaw);
+		float y = tempSphere.GetRadius() * sin(yaw);
+		float z = tempSphere.GetRadius() * sin(pitch) * cos(yaw);
+		Debug::DrawLine(tempWorldSphereTransform.GetPosition(), tempWorldSphereTransform.GetPosition() + Vector3(x, y, z)*2, Vector4(0, 1, 0, 1));
+	}
+
+	AABBVolume tempCube(volumeA.GetHalfDimensions());
+	Transform tempWorldCubeTransform = worldTransformA;
+
+	bool collided = AABBSphereIntersection(tempCube, tempWorldCubeTransform, tempSphere, tempWorldSphereTransform, collisionInfo);
+	Debug::DrawLine(collisionInfo.point.localA, collisionInfo.point.localB, Vector4(1, 0, 0, 1));
+	if (collided)
+	{
+		collisionInfo.point.normal = transform * collisionInfo.point.normal;
+		collisionInfo.point.localB = transform * collisionInfo.point.localB;
+		Debug::DrawLine(collisionInfo.point.localA, collisionInfo.point.localB, Vector4(0, 0, 1, 1));
+	}
+	return collided;
 }
 
 bool CollisionDetection::AABBCapsuleIntersection(
 	const CapsuleVolume& volumeA, const Transform& worldTransformA,
 	const AABBVolume& volumeB, const Transform& worldTransformB, CollisionInfo& collisionInfo) 
 {
-	
+	Vector3 capsuleCentre = worldTransformA.GetPosition();
+	Vector3 capsuleDir = GetCapsuleDirection(worldTransformA);
+	Vector3 capsuleBottom = capsuleCentre - capsuleDir * volumeA.GetHalfHeight() / 2;
+	Vector3 capsuleTop = capsuleCentre + capsuleDir * volumeA.GetHalfHeight() / 2;
 
+	float maxDist = FLT_MAX;
 
+	Vector3 testPoints[3] = {capsuleBottom, capsuleTop, capsuleCentre};
+	Vector3 capsulePoint = Vector3(0,0,0);
+	Vector3 closestPointOnBox = Vector3(0, 0, 0);
+	for (int i = 0; i < 3; i++)
+	{
+		Vector3 boxSize = volumeB.GetHalfDimensions();
+		Vector3 delta = testPoints[i] - worldTransformB.GetPosition();
+		Vector3 closestPointOnBoxTest = worldTransformB.GetPosition() + Vector3::Clamp(delta, -boxSize, boxSize);
+		Debug::DrawLine(closestPointOnBoxTest, testPoints[i], Vector4(1, 1, 0.5f, 1));
+
+		float closeCap = 0.0f;
+		ClosestPointsPointLine(&closeCap, closestPointOnBoxTest, capsuleBottom, capsuleTop);
+		Vector3 capsulePointTest = capsuleBottom + (capsuleTop - capsuleBottom) * closeCap;
+
+		float distTest = (capsulePointTest - closestPointOnBoxTest).Length();
+		if (distTest < maxDist)
+		{
+			capsulePoint = capsulePointTest;
+			closestPointOnBox = closestPointOnBoxTest;
+			maxDist = distTest;
+		}
+
+		Debug::DrawLine(closestPointOnBoxTest, capsulePointTest, Vector4(1, 0.5f, 0.5f, 1));
+
+	}
+	SphereVolume tempSphere(volumeA.GetRadius() / 2);
+	Transform tempWorldTransform = worldTransformA;
+	tempWorldTransform.SetPosition(capsulePoint);
+	tempWorldTransform.SetOrientation(worldTransformA.GetOrientation());
+
+	int maxLines = 32;
+	for (int i = 0; i < maxLines; i++)
+	{
+		float pitch = (2 * PI) / 64 * i;
+		float yaw = (2 * PI * 5) / 64 * i;
+		float x = tempSphere.GetRadius() * cos(pitch) * cos(yaw);
+		float y = tempSphere.GetRadius() * sin(yaw);
+		float z = tempSphere.GetRadius() * sin(pitch) * cos(yaw);
+		Debug::DrawLine(capsulePoint, capsulePoint + Vector3(x, y, z), Vector4(0, 1, 0, 1));
+	}
+
+	Vector3 localPoint = closestPointOnBox - capsulePoint;
+	float distance = localPoint.Length();
+
+	if (distance < volumeA.GetRadius()/2)
+	{
+		Vector3 collisionNormal = localPoint.Normalised();
+		float penetration = (volumeA.GetRadius()/2 - distance);
+
+		Vector3 localA = collisionNormal * volumeA.GetRadius()/2;
+		Vector3 localB = Vector3();
+
+		collisionInfo.AddContactPoint(localA, localB, collisionNormal, penetration);
+		return true;
+	}
 	return false;
 }
 
@@ -475,9 +540,9 @@ bool CollisionDetection::SphereCapsuleIntersection(
 	SphereVolume tempSphere(volumeA.GetRadius()/2);
 	Transform tempWorldTransform = worldTransformA;
 	tempWorldTransform.SetPosition(capsulePoint);
+	tempWorldTransform.SetOrientation(worldTransformA.GetOrientation());
 
 	bool collision = SphereIntersection(tempSphere, tempWorldTransform, volumeB, worldTransformB, collisionInfo);
-	if (collision) std::cout << "YAY\n";
 	return collision;
 }
 
