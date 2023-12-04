@@ -4,6 +4,7 @@ set(PROJECT_NAME CSC8503)
 # Source groups
 ################################################################################
 set(Header_Files
+	"CourseworkGame.h"
 	"GameScreen.h"
     "GameTechRenderer.h"
 	"IntroScreen.h"
@@ -16,6 +17,7 @@ set(Header_Files
 source_group("Header Files" FILES ${Header_Files})
 
 set(Source_Files
+	"CourseworkGame.cpp"
 	"GameScreen.cpp"
     "GameTechRenderer.cpp"
 	"IntroScreen.cpp"

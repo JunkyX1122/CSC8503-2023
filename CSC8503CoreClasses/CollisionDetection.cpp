@@ -154,7 +154,7 @@ bool CollisionDetection::RayCapsuleIntersection(const Ray& r, const Transform& w
 	Vector3 capsuleBottom = capsuleCentre - capsuleDir * volume.GetHalfHeight() / 2;
 	Vector3 capsuleTop = capsuleCentre + capsuleDir * volume.GetHalfHeight() / 2;
 	Vector3 rayStart = r.GetPosition();
-	Vector3 rayEnd = r.GetDirection() * 1000.0f;
+	Vector3 rayEnd = r.GetDirection() * 10000.0f;
 
 	float closeCap = 0.0f;
 	float closeRay = 0.0f;
@@ -421,10 +421,8 @@ bool CollisionDetection::AABBSphereIntersection(const AABBVolume& volumeA, const
 bool  CollisionDetection::OBBSphereIntersection(const OBBVolume& volumeA, const Transform& worldTransformA,
 	const SphereVolume& volumeB, const Transform& worldTransformB, CollisionInfo& collisionInfo) 
 {
-
-
-	Quaternion orientation = worldTransformA.GetOrientation();
-	Vector3 position = worldTransformA.GetPosition();
+	Quaternion orientation = worldTransformA.GetOrientation(); //OBB
+	Vector3 position = worldTransformA.GetPosition(); //OBB
 
 	Matrix3 transform = Matrix3(orientation);
 	Matrix3 invTransform = Matrix3(orientation.Conjugate());
@@ -437,27 +435,17 @@ bool  CollisionDetection::OBBSphereIntersection(const OBBVolume& volumeA, const 
 	tempWorldSphereTransform.SetPosition(localSpherePos + worldTransformA.GetPosition());
 	tempWorldSphereTransform.SetOrientation(localSphereOri);
 
-	int maxLines = 32;
-	for (int i = 0; i < maxLines; i++)
-	{
-		float pitch = (2 * PI) / 64 * i;
-		float yaw = (2 * PI * 5) / 64 * i;
-		float x = tempSphere.GetRadius() * cos(pitch) * cos(yaw);
-		float y = tempSphere.GetRadius() * sin(yaw);
-		float z = tempSphere.GetRadius() * sin(pitch) * cos(yaw);
-		Debug::DrawLine(tempWorldSphereTransform.GetPosition(), tempWorldSphereTransform.GetPosition() + Vector3(x, y, z)*2, Vector4(0, 1, 0, 1));
-	}
 
 	AABBVolume tempCube(volumeA.GetHalfDimensions());
 	Transform tempWorldCubeTransform = worldTransformA;
 
 	bool collided = AABBSphereIntersection(tempCube, tempWorldCubeTransform, tempSphere, tempWorldSphereTransform, collisionInfo);
-	Debug::DrawLine(collisionInfo.point.localA, collisionInfo.point.localB, Vector4(1, 0, 0, 1));
+	//Debug::DrawLine(collisionInfo.point.localA, collisionInfo.point.localB, Vector4(1, 0, 0, 1));
 	if (collided)
 	{
 		collisionInfo.point.normal = transform * collisionInfo.point.normal;
 		collisionInfo.point.localB = transform * collisionInfo.point.localB;
-		Debug::DrawLine(collisionInfo.point.localA, collisionInfo.point.localB, Vector4(0, 0, 1, 1));
+		//Debug::DrawLine(collisionInfo.point.localA, collisionInfo.point.localB, Vector4(0, 0, 1, 1));
 	}
 	return collided;
 }
@@ -466,11 +454,15 @@ bool CollisionDetection::AABBCapsuleIntersection(
 	const CapsuleVolume& volumeA, const Transform& worldTransformA,
 	const AABBVolume& volumeB, const Transform& worldTransformB, CollisionInfo& collisionInfo) 
 {
+	Debug::DrawLine(worldTransformB.GetPosition()+volumeB.GetHalfDimensions(), worldTransformB.GetPosition() - volumeB.GetHalfDimensions(), Vector4(1, 0, 1, 1));
+	//Debug::DrawLine(worldTransformA.GetPosition(), worldTransformB.GetPosition(), Vector4(1, 0.5f, 0.5f, 1));
 	Vector3 capsuleCentre = worldTransformA.GetPosition();
 	Vector3 capsuleDir = GetCapsuleDirection(worldTransformA);
+	capsuleDir = capsuleDir.Normalised();
 	Vector3 capsuleBottom = capsuleCentre - capsuleDir * volumeA.GetHalfHeight() / 2;
 	Vector3 capsuleTop = capsuleCentre + capsuleDir * volumeA.GetHalfHeight() / 2;
-
+	Debug::DrawLine(capsuleBottom, capsuleTop, Vector4(1, 1, 1, 1));
+	//std::cout << capsuleDir << "\n";
 	float maxDist = FLT_MAX;
 
 	Vector3 testPoints[3] = {capsuleBottom, capsuleTop, capsuleCentre};
@@ -502,8 +494,8 @@ bool CollisionDetection::AABBCapsuleIntersection(
 	Transform tempWorldTransform = worldTransformA;
 	tempWorldTransform.SetPosition(capsulePoint);
 	tempWorldTransform.SetOrientation(worldTransformA.GetOrientation());
-
-	int maxLines = 0;
+	Debug::DrawLine(tempWorldTransform.GetPosition(), worldTransformB.GetPosition(), Vector4(1, 0.5f, 0.5f, 1));
+	int maxLines = 32;
 	for (int i = 0; i < maxLines; i++)
 	{
 		float pitch = (2 * PI) / 64 * i;
@@ -560,7 +552,51 @@ bool CollisionDetection::OBBCapsuleIntersection(
 	const CapsuleVolume& volumeA, const Transform& worldTransformA,
 	const OBBVolume& volumeB, const Transform& worldTransformB, CollisionInfo& collisionInfo)
 {
-	return false;
+	Debug::DrawLine(worldTransformA.GetPosition(), worldTransformB.GetPosition(), Vector4(0, 0, 1, 1));
+
+	Quaternion orientation = worldTransformB.GetOrientation(); //OBB
+	//std::cout << orientation.ToEuler() << "\n";
+	Vector3 position = worldTransformB.GetPosition(); //OBB
+
+	Matrix3 transform = Matrix3(orientation);
+	Matrix3 invTransform = Matrix3(orientation.Conjugate());
+
+	//std::cout << invTransform << "\n";
+	Vector3 localCapsulePos = invTransform * (worldTransformA.GetPosition());
+	Vector3 localCapsuleAng = invTransform * (worldTransformA.GetOrientation()).ToEuler();
+	Quaternion localCapsuleOri = Quaternion::EulerAnglesToQuaternion(localCapsuleAng.x, localCapsuleAng.y, localCapsuleAng.z);
+	//std::cout << localCapsuleOri.ToEuler() << "\n";
+
+	CapsuleVolume tempCapsule(volumeA.GetHalfHeight(),volumeA.GetRadius());
+	Transform tempWorldCapsuleTransform;
+	tempWorldCapsuleTransform.SetPosition(localCapsulePos);
+	tempWorldCapsuleTransform.SetOrientation(localCapsuleOri);
+	/*
+	std::cout << orientation.ToEuler() << "\n";
+	std::cout << tempWorldCapsuleTransform.GetOrientation().ToEuler() << "\n";
+	std::cout << worldTransformA.GetOrientation().ToEuler() << "\n";
+	std::cout << worldTransformA.GetMatrix() << "\n";
+	std::cout << tempWorldCapsuleTransform.GetMatrix() << "\n";
+	*/
+	//std::cout << GetCapsuleDirection(worldTransformA) << "\n";
+	//std::cout << GetCapsuleDirection(tempWorldCapsuleTransform ) << "\n";
+
+	AABBVolume tempCube(volumeB.GetHalfDimensions());
+	Transform tempWorldCubeTransform = worldTransformB;
+
+	//Debug::DrawLine(tempWorldCapsuleTransform.GetPosition(), tempWorldCubeTransform.GetPosition(), Vector4(0, 0, 1, 1));
+
+	bool collided = AABBCapsuleIntersection(tempCapsule, tempWorldCapsuleTransform, tempCube, tempWorldCubeTransform, collisionInfo);
+	//Debug::DrawLine(collisionInfo.point.localA, collisionInfo.point.localB, Vector4(1, 0, 0, 1));
+	if (collided)
+	{
+		collisionInfo.point.localA = transform * collisionInfo.point.localA;
+		collisionInfo.point.localB = transform * collisionInfo.point.localB;
+		collisionInfo.point.normal = transform * collisionInfo.point.normal;
+		Debug::DrawLine(collisionInfo.point.localA, collisionInfo.point.localB, Vector4(1, 0, 1, 1));
+	}
+	
+	return collided;
 }
 
 

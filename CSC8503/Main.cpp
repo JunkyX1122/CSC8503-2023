@@ -12,7 +12,7 @@
 #include "NavigationGrid.h"
 #include "NavigationMesh.h"
 
-#include "TutorialGame.h"
+#include "CourseworkGame.h"
 #include "NetworkedGame.h"
 
 #include "PushdownMachine.h"
@@ -319,15 +319,15 @@ int main() {
 	if (!w->HasInitialised()) {
 		return -1;
 	}	
-	TestNetworking();
+	//TestNetworking();
 	//TestBehaviourTree();
 	//TestPushdownAutomata(w);
 
 	w->ShowOSPointer(false);
 	w->LockMouseToWindow(true);
 
-	TutorialGame* g = new TutorialGame();
-	TestPathfinding();
+	CourseworkGame* g = new CourseworkGame();
+	//TestPathfinding();
 	
 
 

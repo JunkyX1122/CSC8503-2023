@@ -69,7 +69,7 @@ void NetworkedGame::UpdateGame(float dt) {
 		StartAsClient(127,0,0,1);
 	}
 
-	TutorialGame::UpdateGame(dt);
+	CourseworkGame::UpdateGame(dt);
 }
 
 void NetworkedGame::UpdateAsServer(float dt) {
