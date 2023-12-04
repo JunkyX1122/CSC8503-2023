@@ -291,7 +291,7 @@ GameObject* CourseworkGame::AddFloorToWorld(const Vector3& position) {
 	floor->GetTransform()
 		.SetScale(floorSize * 2)
 		.SetPosition(position)
-		.SetOrientation(Quaternion::EulerAnglesToQuaternion(45.0f,0,0))
+		.SetOrientation(Quaternion::EulerAnglesToQuaternion(0,0,0))
 		;
 
 	floor->SetRenderObject(new RenderObject(&floor->GetTransform(), cubeMesh, basicTex, basicShader));
