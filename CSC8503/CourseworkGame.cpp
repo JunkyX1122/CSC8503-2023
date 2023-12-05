@@ -84,9 +84,7 @@ void CourseworkGame::UpdateGame(float dt) {
 	if (!inSelectionMode) {
 		world->GetMainCamera().UpdateCamera(dt);
 	}
-	AttachCameraPlayer();
-	UpdateKeys();
-	MovePlayerObject();
+	
 	if (useGravity) {
 		Debug::Print("(G)ravity on", Vector2(5, 95), Debug::RED);
 	}
@@ -116,19 +114,32 @@ void CourseworkGame::UpdateGame(float dt) {
 	}
 
 	//Debug::DrawLine(Vector3(), Vector3(0, 100, 0), Vector4(1, 0, 0, 1));
-
-	//SelectObject();
-	//MoveSelectedObject();
+	if (!inPlayerMode)
+	{
+		SelectObject();
+		MoveSelectedObject();
+	}
+	else
+	{
+		AttachCameraPlayer();
+		MovePlayerObject(dt);
+	}
+	UpdateKeys();
+	
 	if (testStateObject)
 	{
 		Debug::DrawLine(Vector3(0, 0, 0), testStateObject->GetTransform().GetPosition(), Vector4(0, 0, 1, 1));
 		testStateObject->Update(dt);
 	}
+	Vector3 speed = playerObject->GetPhysicsObject()->GetLinearVelocity();
+	//Debug::Print("PlayerSpeed:" + std::to_string(speed.x) + " " + std::to_string(speed.y) + " " + std::to_string(speed.z) + "\n", Vector2(5, 50));
 	world->UpdateWorld(dt);
 	renderer->Update(dt);
 	physics->Update(dt);
-	
 	renderer->Render();
+
+	
+
 	Debug::UpdateRenderables(dt);
 }
 
@@ -146,6 +157,10 @@ void CourseworkGame::UpdateKeys() {
 		useGravity = !useGravity; //Toggle gravity!
 		physics->UseGravity(useGravity);
 	}
+	if (Window::GetKeyboard()->KeyPressed(KeyCodes::P)) {
+		inPlayerMode = !inPlayerMode;
+	}
+	
 	//Running certain physics updates in a consistent order might cause some
 	//bias in the calculations - the same objects might keep 'winning' the constraint
 	//allowing the other one to stretch too much etc. Shuffling the order so that it
@@ -244,7 +259,7 @@ void CourseworkGame::AttachCameraPlayer()
 	world->GetMainCamera().SetYaw(angles.y);
 }
 
-void CourseworkGame::MovePlayerObject() {
+void CourseworkGame::MovePlayerObject(float dt) {
 	Matrix4 view = world->GetMainCamera().BuildViewMatrix();
 	Matrix4 camWorld = view.Inverse();
 
@@ -261,7 +276,7 @@ void CourseworkGame::MovePlayerObject() {
 	//*
 	
 	//*/
-	float spd = 1.0f;
+	float spd = 20.0f * dt;
 
 	if (Window::GetKeyboard()->KeyDown(KeyCodes::W)) {
 		playerObject->GetPhysicsObject()->AddForce(fwdAxis * spd);
@@ -280,8 +295,11 @@ void CourseworkGame::MovePlayerObject() {
 	}
 
 	if (Window::GetKeyboard()->KeyPressed(KeyCodes::SPACE)) {
-		playerObject->GetPhysicsObject()->ApplyLinearImpulse(Vector3(0, 1.0f, 0));
+		//std::cout << "JUMP\n";
+
+		playerObject->GetPhysicsObject()->ApplyLinearImpulse(Vector3(0, 0.1f, 0));
 	}
+	
 }
 
 void CourseworkGame::DebugObjectMovement() {
@@ -338,7 +356,7 @@ void CourseworkGame::InitWorld() {
 	
 	//testStateObject = AddStateObjectToWorld(Vector3(0, 200, 0));
 
-	//InitMixedGridWorld(15, 15, 3.5f, 3.5f);
+	InitMixedGridWorld(15, 15, 3.5f, 3.5f);
 	//BridgeConstraintTest();
 	//InitGameExamples();
 	InitDefaultFloor();
@@ -353,7 +371,7 @@ A single function to add a large immoveable cube to the bottom of our world
 GameObject* CourseworkGame::AddFloorToWorld(const Vector3& position) {
 	GameObject* floor = new GameObject();
 
-	Vector3 floorSize = Vector3(200, 2, 200);
+	Vector3 floorSize = Vector3(100, 20, 100);
 	//AABBVolume* volume = new AABBVolume(floorSize);
 	OBBVolume* volume = new OBBVolume(floorSize);
 	floor->SetBoundingVolume((CollisionVolume*)volume);
@@ -365,7 +383,7 @@ GameObject* CourseworkGame::AddFloorToWorld(const Vector3& position) {
 
 	floor->SetRenderObject(new RenderObject(&floor->GetTransform(), cubeMesh, basicTex, basicShader));
 	floor->SetPhysicsObject(new PhysicsObject(&floor->GetTransform(), floor->GetBoundingVolume()));
-
+	floor->GetPhysicsObject()->SetElasticity(0.0f);
 	floor->GetPhysicsObject()->SetInverseMass(0);
 	floor->GetPhysicsObject()->InitCubeInertia();
 
@@ -400,7 +418,7 @@ GameObject* CourseworkGame::AddSphereToWorld(const Vector3& position, float radi
 
 	sphere->GetPhysicsObject()->SetInverseMass(inverseMass);
 	sphere->GetPhysicsObject()->InitSphereInertia();
-
+	sphere->GetPhysicsObject()->SetElasticity(1.0f);
 	world->AddGameObject(sphere);
 
 	return sphere;
@@ -466,6 +484,7 @@ GameObject* CourseworkGame::AddPlayerToWorld(const Vector3& position) {
 
 	character->GetPhysicsObject()->SetInverseMass(inverseMass);
 	character->GetPhysicsObject()->InitSphereInertia();
+	character->GetPhysicsObject()->SetElasticity(0.0f);
 
 	world->AddGameObject(character);
 	playerCameraRotation = new Quaternion(Vector3(0, 0, 0), 0);

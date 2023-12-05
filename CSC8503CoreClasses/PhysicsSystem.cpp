@@ -94,13 +94,7 @@ void PhysicsSystem::Update(float dt) {
 	int iteratorCount = 0;
 	while(dTOffset > realDT) {
 		IntegrateAccel(realDT); //Update accelerations from external forces
-		if (useBroadPhase) {
-			BroadPhase();
-			NarrowPhase();
-		}
-		else {
-			BasicCollisionDetection();
-		}
+		
 
 		//This is our simple iterative solver - 
 		//we just run things multiple times, slowly moving things forward
@@ -110,6 +104,14 @@ void PhysicsSystem::Update(float dt) {
 			UpdateConstraints(constraintDt);	
 		}
 		IntegrateVelocity(realDT); //update positions from new velocity changes
+
+		if (useBroadPhase) {
+			BroadPhase();
+			NarrowPhase();
+		}
+		else {
+			BasicCollisionDetection();
+		}
 
 		dTOffset -= realDT;
 		iteratorCount++;
@@ -229,6 +231,10 @@ so that objects separate back out.
 */
 void PhysicsSystem::ImpulseResolveCollision(GameObject& a, GameObject& b, CollisionDetection::ContactPoint& p) const 
 {
+	if (p.penetration <= 0.0f)
+	{
+		return;
+	}
 	PhysicsObject* physA = a.GetPhysicsObject();
 	PhysicsObject* physB = b.GetPhysicsObject();
 
@@ -239,8 +245,10 @@ void PhysicsSystem::ImpulseResolveCollision(GameObject& a, GameObject& b, Collis
 
 	if (totalMass == 0) return;
 
+	
 	transformA.SetPosition(transformA.GetPosition() - (p.normal * p.penetration * (physA->GetInverseMass() / totalMass)));
 	transformB.SetPosition(transformB.GetPosition() + (p.normal * p.penetration * (physB->GetInverseMass() / totalMass)));
+	
 
 	Vector3 relativeA = p.localA;
 	Vector3 relativeB = p.localB;
@@ -263,21 +271,36 @@ void PhysicsSystem::ImpulseResolveCollision(GameObject& a, GameObject& b, Collis
 
 	float angularEffect = Vector3::Dot(inertiaA + inertiaB, p.normal);
 
-	float cRestitution = abs(physB->GetBounciness() - physA->GetBounciness()) / 2;
+	float cRestitution = std::clamp((physB->GetElasticity() + physA->GetElasticity()) / 2.0f,0.0f,1.0f);
+
 	if ((-(1.0f + cRestitution) * impulseForce) < 1.5f)
 	{
 		cRestitution = 0.0f;
 	}
-
 	float j = (-(1.0f + cRestitution) * impulseForce) / (totalMass + angularEffect);
 	//std::cout << (-(1.0f + cRestitution) * impulseForce) << "\n";
 	Vector3 fullImpulse = p.normal * j;
 	
+	
 	physA->ApplyLinearImpulse(-fullImpulse);
-	physB->ApplyLinearImpulse( fullImpulse);
+	physB->ApplyLinearImpulse(fullImpulse);
 
 	physA->ApplyAngularImpulse(Vector3::Cross(relativeA, -fullImpulse));
-	physB->ApplyAngularImpulse(Vector3::Cross(relativeB,  fullImpulse));
+	physB->ApplyAngularImpulse(Vector3::Cross(relativeB, fullImpulse));
+
+	if (p.penetration < 0.001f)
+	{
+		fullVelocityA += (fullVelocityA * p.normal);
+		fullVelocityB -= (fullVelocityB * p.normal);
+		//physA->SetLinearVelocity(fullVelocityA);
+		//physB->SetLinearVelocity(fullVelocityB);
+
+	}
+	
+	
+	//std::cout << fullVelocityA << "\n";
+	//std::cout << fullVelocityB << "\n";
+
 }
 
 /*
@@ -367,7 +390,7 @@ void PhysicsSystem::IntegrateAccel(float dt)
 		Vector3 force = object->GetForce();
 		Vector3 accel = force * inverseMass;
 
-		if (applyGravity && inverseMass > 0) accel += gravity;
+		if (applyGravity && inverseMass > 0) accel += (gravity);
 
 		linearVel += accel * dt;
 		object->SetLinearVelocity(linearVel);
@@ -408,6 +431,7 @@ void PhysicsSystem::IntegrateVelocity(float dt)
 
 		Vector3 position = transform.GetPosition();
 		Vector3 linearVel = object->GetLinearVelocity();
+
 		position += linearVel * dt;
 		transform.SetPosition(position);
 

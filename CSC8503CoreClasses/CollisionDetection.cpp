@@ -377,7 +377,7 @@ bool CollisionDetection::SphereIntersection(const SphereVolume& volumeA, const T
 
 	float deltaLength = delta.Length();
 
-	if (deltaLength < radii)
+	if (deltaLength <= radii)
 	{
 		float penetration = (radii - deltaLength);
 		Vector3 normal = delta.Normalised();
@@ -404,7 +404,7 @@ bool CollisionDetection::AABBSphereIntersection(const AABBVolume& volumeA, const
 	Vector3 localPoint = delta - closestPointOnBox;
 	float distance = localPoint.Length();
 
-	if (distance < volumeB.GetRadius())
+	if (distance <= volumeB.GetRadius())
 	{
 		Vector3 collisionNormal = localPoint.Normalised();
 		float penetration = (volumeB.GetRadius() - distance);
@@ -509,7 +509,7 @@ bool CollisionDetection::AABBCapsuleIntersection(
 	Vector3 localPoint = closestPointOnBox - capsulePoint;
 	float distance = localPoint.Length();
 
-	if (distance < volumeA.GetRadius()/2)
+	if (distance <= volumeA.GetRadius()/2)
 	{
 		Vector3 collisionNormal = localPoint.Normalised();
 		float penetration = (volumeA.GetRadius()/2 - distance);

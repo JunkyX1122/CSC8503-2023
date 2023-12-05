@@ -45,7 +45,7 @@ namespace NCL {
 			void DebugObjectMovement();
 			void LockedObjectMovement();
 			void AttachCameraPlayer();
-			void MovePlayerObject();
+			void MovePlayerObject(float dt);
 
 			GameObject* AddFloorToWorld(const Vector3& position);
 			GameObject* AddSphereToWorld(const Vector3& position, float radius, float inverseMass = 10.0f);
@@ -68,7 +68,7 @@ namespace NCL {
 
 			bool useGravity;
 			bool inSelectionMode;
-
+			bool inPlayerMode = false;
 			float		forceMagnitude;
 
 			GameObject* selectionObject = nullptr;
