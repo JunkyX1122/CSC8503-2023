@@ -26,6 +26,7 @@ namespace NCL::CSC8503 {
 			return isActive;
 		}
 
+		
 		Transform& GetTransform() {
 			return transform;
 		}
@@ -55,10 +56,12 @@ namespace NCL::CSC8503 {
 		}
 
 		virtual void OnCollisionBegin(GameObject* otherObject) {
+			isColliding = true;
 			//std::cout << "OnCollisionBegin event occured!\n";
 		}
 
 		virtual void OnCollisionEnd(GameObject* otherObject) {
+			isColliding = false;
 			//std::cout << "OnCollisionEnd event occured!\n";
 		}
 
@@ -74,6 +77,16 @@ namespace NCL::CSC8503 {
 			return worldID;
 		}
 
+		bool IsColliding() const {
+			return isColliding;
+		}
+
+		void SetColliding(bool b)
+		{
+			isColliding = b;
+		}
+		void DrawHitbox();
+
 	protected:
 		Transform			transform;
 
@@ -84,6 +97,7 @@ namespace NCL::CSC8503 {
 
 		bool		isActive;
 		int			worldID;
+		bool isColliding;
 		std::string	name;
 
 		Vector3 broadphaseAABB;

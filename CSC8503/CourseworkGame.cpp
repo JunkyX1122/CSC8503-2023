@@ -267,7 +267,7 @@ void CourseworkGame::InitWorld() {
 	physics->Clear();
 
 	
-	testStateObject = AddStateObjectToWorld(Vector3(0, 200, 0));
+	//testStateObject = AddStateObjectToWorld(Vector3(0, 200, 0));
 
 	InitMixedGridWorld(15, 15, 3.5f, 3.5f);
 	//BridgeConstraintTest();
@@ -291,7 +291,7 @@ GameObject* CourseworkGame::AddFloorToWorld(const Vector3& position) {
 	floor->GetTransform()
 		.SetScale(floorSize * 2)
 		.SetPosition(position)
-		.SetOrientation(Quaternion::EulerAnglesToQuaternion(0,0,0))
+		.SetOrientation(Quaternion::EulerAnglesToQuaternion(20.0f,0,0))
 		;
 
 	floor->SetRenderObject(new RenderObject(&floor->GetTransform(), cubeMesh, basicTex, basicShader));
@@ -492,13 +492,13 @@ void CourseworkGame::InitMixedGridWorld(int numRows, int numCols, float rowSpaci
 	AddCapsuleToWorld(Vector3(0, 75, 0), sphereRadius * 30.0f, sphereRadius * 30.0f);
 	//AddSphereToWorld(Vector3(50, 25, 0), sphereRadius * 10.0f);
 	//AddCapsuleToWorld(Vector3(0, 0, 0), cubeDims.y * 20, sphereRadius * 20);
-	numRows = 0;
+	numRows = 10;
 	for (int x = 0; x < numRows; ++x) {
 		for (int z = 0; z < numRows; ++z) {
 			Vector3 position = Vector3(x * colSpacing, 10.0f, z * rowSpacing);
 
 			if (rand() % 2) {
-				//AddCubeToWorld(position, cubeDims);
+				AddCubeToWorld(position, cubeDims);
 			}
 			else {
 				AddSphereToWorld(position, sphereRadius);
@@ -550,7 +550,7 @@ bool CourseworkGame::SelectObject() {
 			RayCollision closestCollision;
 			if (world->Raycast(ray, closestCollision, true)) 
 			{
-				//Debug::DrawLine(ray.GetPosition(), closestCollision.collidedAt, Vector4(0, 1, 0, 1), 500.0f);
+				Debug::DrawLine(ray.GetPosition(), closestCollision.collidedAt, Vector4(0, 1, 0, 1), 500.0f);
 				selectionObject = (GameObject*)closestCollision.node;
 
 				selectionObject->GetRenderObject()->SetColour(Vector4(0, 1, 0, 1));

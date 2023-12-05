@@ -210,6 +210,8 @@ void PhysicsSystem::BasicCollisionDetection()
 
 			if (CollisionDetection::ObjectIntersection(*i, *j, info)) 
 			{
+				(*i)->SetColliding(true);
+				(*j)->SetColliding(true);
 				//std::cout << "Collision between " << (*i)->GetName() << " and " << (*j) -> GetName() << std::endl;
 				ImpulseResolveCollision(*info.a, *info.b, info.point);
 				info.framesLeft = numCollisionFrames;
@@ -434,7 +436,9 @@ ones in the next 'game' frame.
 void PhysicsSystem::ClearForces() {
 	gameWorld.OperateOnContents(
 		[](GameObject* o) {
+			o->DrawHitbox();
 			o->GetPhysicsObject()->ClearForces();
+			o->SetColliding(false);
 		}
 	);
 }
