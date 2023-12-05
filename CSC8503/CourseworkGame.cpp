@@ -84,24 +84,9 @@ void CourseworkGame::UpdateGame(float dt) {
 	if (!inSelectionMode) {
 		world->GetMainCamera().UpdateCamera(dt);
 	}
-	if (lockedObject != nullptr) {
-		Vector3 objPos = lockedObject->GetTransform().GetPosition();
-		Vector3 camPos = objPos + lockedOffset;
-
-		Matrix4 temp = Matrix4::BuildViewMatrix(camPos, objPos, Vector3(0,1,0));
-
-		Matrix4 modelMat = temp.Inverse();
-
-		Quaternion q(modelMat);
-		Vector3 angles = q.ToEuler(); //nearly there now!
-
-		world->GetMainCamera().SetPosition(camPos);
-		world->GetMainCamera().SetPitch(angles.x);
-		world->GetMainCamera().SetYaw(angles.y);
-	}
-
+	AttachCameraPlayer();
 	UpdateKeys();
-
+	MovePlayerObject();
 	if (useGravity) {
 		Debug::Print("(G)ravity on", Vector2(5, 95), Debug::RED);
 	}
@@ -132,8 +117,8 @@ void CourseworkGame::UpdateGame(float dt) {
 
 	//Debug::DrawLine(Vector3(), Vector3(0, 100, 0), Vector4(1, 0, 0, 1));
 
-	SelectObject();
-	MoveSelectedObject();
+	//SelectObject();
+	//MoveSelectedObject();
 	if (testStateObject)
 	{
 		Debug::DrawLine(Vector3(0, 0, 0), testStateObject->GetTransform().GetPosition(), Vector4(0, 0, 1, 1));
@@ -178,18 +163,18 @@ void CourseworkGame::UpdateKeys() {
 	if (Window::GetKeyboard()->KeyPressed(KeyCodes::F8)) {
 		world->ShuffleObjects(false);
 	}
-
+	
 	if (lockedObject) {
-		LockedObjectMovement();
+		//LockedObjectMovement();
 	}
 	else {
-		DebugObjectMovement();
+		//DebugObjectMovement();
 	}
 }
 
 void CourseworkGame::LockedObjectMovement() {
-	Matrix4 view		= world->GetMainCamera().BuildViewMatrix();
-	Matrix4 camWorld	= view.Inverse();
+	Matrix4 view = world->GetMainCamera().BuildViewMatrix();
+	Matrix4 camWorld = view.Inverse();
 
 	Vector3 rightAxis = Vector3(camWorld.GetColumn(0)); //view is inverse of model!
 
@@ -210,8 +195,92 @@ void CourseworkGame::LockedObjectMovement() {
 		selectionObject->GetPhysicsObject()->AddForce(-fwdAxis);
 	}
 
-	if (Window::GetKeyboard()->KeyDown(KeyCodes::NEXT)) {
-		selectionObject->GetPhysicsObject()->AddForce(Vector3(0,-10,0));
+	if (Window::GetKeyboard()->KeyDown(KeyCodes::SPACE)) {
+		selectionObject->GetPhysicsObject()->AddForce(Vector3(0, -10, 0));
+	}
+}
+
+void CourseworkGame::AttachCameraPlayer()
+{
+	Vector3 objPos = playerObject->GetTransform().GetPosition();
+
+	Vector3 camOrientation = playerCameraRotation->ToEuler();
+	float pitch = camOrientation.x;
+	float yaw = camOrientation.y;
+
+	pitch	-= controller.GetNamedAxis("YLook");
+	yaw -= controller.GetNamedAxis("XLook");
+
+	pitch = std::min(pitch, 90.0f);
+	pitch = std::max(pitch, -90.0f);
+
+	if (yaw < 0) {
+		yaw += 360.0f;
+	}
+	if (yaw > 360.0f) {
+		yaw -= 360.0f;
+	}
+
+	*playerCameraRotation = Quaternion::EulerAnglesToQuaternion(pitch, yaw, camOrientation.z);
+
+	Vector3 camPos = (
+		Matrix4::Translation(objPos + Vector3(0,10,0)) *
+		Matrix4(*playerCameraRotation) *
+		Matrix4::Translation(Vector3(0,0,20))
+		).GetPositionVector();
+
+	Matrix4 temp = Matrix4::BuildViewMatrix(camPos, objPos, Vector3(0, 1, 0));
+
+	Matrix4 modelMat = temp.Inverse();
+	//*
+
+	
+	//*/
+	Quaternion q(modelMat);
+	Vector3 angles = q.ToEuler(); //nearly there now!
+
+	world->GetMainCamera().SetPosition(camPos);
+	world->GetMainCamera().SetPitch(angles.x);
+	world->GetMainCamera().SetYaw(angles.y);
+}
+
+void CourseworkGame::MovePlayerObject() {
+	Matrix4 view = world->GetMainCamera().BuildViewMatrix();
+	Matrix4 camWorld = view.Inverse();
+
+	Vector3 rightAxis = Vector3(camWorld.GetColumn(0)); //view is inverse of model!
+
+	//forward is more tricky -  camera forward is 'into' the screen...
+	//so we can take a guess, and use the cross of straight up, and
+	//the right axis, to hopefully get a vector that's good enough!
+
+	Vector3 fwdAxis = Vector3::Cross(Vector3(0, 1, 0), rightAxis);
+	fwdAxis.y = 0.0f;
+	fwdAxis.Normalise();
+
+	//*
+	
+	//*/
+	float spd = 1.0f;
+
+	if (Window::GetKeyboard()->KeyDown(KeyCodes::W)) {
+		playerObject->GetPhysicsObject()->AddForce(fwdAxis * spd);
+	}
+
+	if (Window::GetKeyboard()->KeyDown(KeyCodes::S)) {
+		playerObject->GetPhysicsObject()->AddForce(-fwdAxis * spd);
+	}
+
+	if (Window::GetKeyboard()->KeyDown(KeyCodes::A)) {
+		playerObject->GetPhysicsObject()->AddForce(-rightAxis * spd);
+	}
+
+	if (Window::GetKeyboard()->KeyDown(KeyCodes::D)) {
+		playerObject->GetPhysicsObject()->AddForce(rightAxis * spd);
+	}
+
+	if (Window::GetKeyboard()->KeyPressed(KeyCodes::SPACE)) {
+		playerObject->GetPhysicsObject()->ApplyLinearImpulse(Vector3(0, 1.0f, 0));
 	}
 }
 
@@ -265,11 +334,11 @@ void CourseworkGame::InitCamera() {
 void CourseworkGame::InitWorld() {
 	world->ClearAndErase();
 	physics->Clear();
-
+	playerObject = AddPlayerToWorld(Vector3(20, 20, 20));
 	
 	//testStateObject = AddStateObjectToWorld(Vector3(0, 200, 0));
 
-	InitMixedGridWorld(15, 15, 3.5f, 3.5f);
+	//InitMixedGridWorld(15, 15, 3.5f, 3.5f);
 	//BridgeConstraintTest();
 	//InitGameExamples();
 	InitDefaultFloor();
@@ -291,7 +360,7 @@ GameObject* CourseworkGame::AddFloorToWorld(const Vector3& position) {
 	floor->GetTransform()
 		.SetScale(floorSize * 2)
 		.SetPosition(position)
-		.SetOrientation(Quaternion::EulerAnglesToQuaternion(20.0f,0,0))
+		.SetOrientation(Quaternion::EulerAnglesToQuaternion(0,0,0))
 		;
 
 	floor->SetRenderObject(new RenderObject(&floor->GetTransform(), cubeMesh, basicTex, basicShader));
@@ -312,6 +381,9 @@ rigid body representation. This and the cube function will let you build a lot o
 physics worlds. You'll probably need another function for the creation of OBB cubes too.
 
 */
+
+
+
 GameObject* CourseworkGame::AddSphereToWorld(const Vector3& position, float radius, float inverseMass) {
 	GameObject* sphere = new GameObject();
 
@@ -378,10 +450,10 @@ GameObject* CourseworkGame::AddCapsuleToWorld(const Vector3& position, float hal
 
 GameObject* CourseworkGame::AddPlayerToWorld(const Vector3& position) {
 	float meshSize		= 1.0f;
-	float inverseMass	= 0.5f;
+	float inverseMass	= 50.0f;
 
 	GameObject* character = new GameObject();
-	SphereVolume* volume  = new SphereVolume(1.0f);
+	CapsuleVolume* volume  = new CapsuleVolume(1.0f,1.0f);
 
 	character->SetBoundingVolume((CollisionVolume*)volume);
 
@@ -396,7 +468,7 @@ GameObject* CourseworkGame::AddPlayerToWorld(const Vector3& position) {
 	character->GetPhysicsObject()->InitSphereInertia();
 
 	world->AddGameObject(character);
-
+	playerCameraRotation = new Quaternion(Vector3(0, 0, 0), 0);
 	return character;
 }
 

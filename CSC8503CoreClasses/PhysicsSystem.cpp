@@ -263,10 +263,10 @@ void PhysicsSystem::ImpulseResolveCollision(GameObject& a, GameObject& b, Collis
 
 	float angularEffect = Vector3::Dot(inertiaA + inertiaB, p.normal);
 
-	float cRestitution = 0.66f;
+	float cRestitution = abs(physB->GetBounciness() - physA->GetBounciness()) / 2;
 	if ((-(1.0f + cRestitution) * impulseForce) < 1.5f)
 	{
-		cRestitution = 0;
+		cRestitution = 0.0f;
 	}
 
 	float j = (-(1.0f + cRestitution) * impulseForce) / (totalMass + angularEffect);

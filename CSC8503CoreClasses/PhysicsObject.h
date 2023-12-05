@@ -64,7 +64,9 @@ namespace NCL {
 			Matrix3 GetInertiaTensor() const {
 				return inverseInteriaTensor;
 			}
-
+			float GetBounciness() const {
+				return bounciness;
+			}
 
 		protected:
 			const CollisionVolume* volume;
@@ -82,6 +84,7 @@ namespace NCL {
 			Vector3 torque;
 			Vector3 inverseInertia;
 			Matrix3 inverseInteriaTensor;
+			float bounciness = 0.0f;
 		};
 	}
 }

@@ -44,6 +44,8 @@ namespace NCL {
 			void MoveSelectedObject();
 			void DebugObjectMovement();
 			void LockedObjectMovement();
+			void AttachCameraPlayer();
+			void MovePlayerObject();
 
 			GameObject* AddFloorToWorld(const Vector3& position);
 			GameObject* AddSphereToWorld(const Vector3& position, float radius, float inverseMass = 10.0f);
@@ -85,7 +87,7 @@ namespace NCL {
 
 			//Coursework Additional functionality	
 			GameObject* lockedObject	= nullptr;
-			Vector3 lockedOffset		= Vector3(0, 14, 20);
+			Vector3 lockedOffset		= Vector3(0, 0, 0);
 			void LockCameraToObject(GameObject* o) {
 				lockedObject = o;
 			}
@@ -94,6 +96,10 @@ namespace NCL {
 
 			StateGameObject* AddStateObjectToWorld(const Vector3& position);
 			StateGameObject* testStateObject;
+
+			GameObject* playerObject = nullptr;
+			Controller* playerController = nullptr;
+			Quaternion* playerCameraRotation;
 		};
 	}
 }
