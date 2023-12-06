@@ -9,8 +9,44 @@
 
 #include "StateGameObject.h"
 
+#include <string>
 namespace NCL {
 	namespace CSC8503 {
+		struct LevelGridUnit
+		{
+			LevelGridUnit* parent;
+
+			LevelGridUnit* connected[4];
+
+			Vector3		position;
+
+			int type;
+
+			LevelGridUnit() {
+				for (int i = 0; i < 4; ++i) {
+					connected[i] = nullptr;
+				}
+				type = 0;
+				parent = nullptr;
+			}
+			~LevelGridUnit() {	}
+		};
+		class LevelData
+		{
+		public:
+			LevelData();
+			LevelData(const std::string& filename);
+			LevelGridUnit* GetAllGridUnits() { return allGridUnits; }
+			int GetGridSize() { return gridWidth * gridHeight; }
+			int GetNodeSize() { return nodeSize; }
+			Vector2 GetGridDimentions() { return Vector2(gridWidth, gridHeight); }
+		protected:
+			int nodeSize;
+			int gridWidth;
+			int gridHeight;
+			LevelGridUnit* allGridUnits;
+		};
+
 		class CourseworkGame {
 		public:
 			CourseworkGame();
@@ -46,6 +82,7 @@ namespace NCL {
 			void LockedObjectMovement();
 			void AttachCameraPlayer();
 			void MovePlayerObject(float dt);
+			void GenerateLevel();
 
 			GameObject* AddFloorToWorld(const Vector3& position);
 			GameObject* AddSphereToWorld(const Vector3& position, float radius, float inverseMass = 10.0f);
@@ -100,7 +137,11 @@ namespace NCL {
 			GameObject* playerObject = nullptr;
 			Controller* playerController = nullptr;
 			Quaternion* playerCameraRotation;
+			LevelData* levelData = nullptr;
 		};
+	
+	
+		
 	}
 }
 

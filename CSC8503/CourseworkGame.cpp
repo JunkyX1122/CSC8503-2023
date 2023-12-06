@@ -8,7 +8,8 @@
 #include "OrientationConstraint.h"
 #include "StateGameObject.h"
 
-
+#include "Assets.h"
+#include <fstream>
 
 using namespace NCL;
 using namespace CSC8503;
@@ -355,13 +356,87 @@ void CourseworkGame::InitWorld() {
 	playerObject = AddPlayerToWorld(Vector3(20, 20, 20));
 	
 	//testStateObject = AddStateObjectToWorld(Vector3(0, 200, 0));
-
-	InitMixedGridWorld(15, 15, 3.5f, 3.5f);
+	GenerateLevel();
+	//InitMixedGridWorld(15, 15, 3.5f, 3.5f);
 	//BridgeConstraintTest();
 	//InitGameExamples();
-	InitDefaultFloor();
+	//InitDefaultFloor();
 	
 }
+LevelData::LevelData()
+{
+	nodeSize = 0;
+	gridWidth = 0;
+	gridHeight = 0;
+	allGridUnits = nullptr;
+}
+LevelData::LevelData(const std::string& filename) : LevelData()
+{
+	std::ifstream infile(Assets::DATADIR + filename);
+
+	infile >> nodeSize; 
+	infile >> gridWidth; 
+	infile >> gridHeight; 
+
+	allGridUnits = new LevelGridUnit[gridWidth * gridHeight];
+
+	for (int y = 0; y < gridHeight; ++y) {
+		for (int x = 0; x < gridWidth; ++x) {
+			LevelGridUnit& n = allGridUnits[(gridWidth * y) + x];
+			char type = 0;
+			infile >> type;
+			n.type = type;
+			n.position = Vector3((float)(x * nodeSize), 0, (float)(y * nodeSize));
+		}
+	}
+
+	//now to build the connectivity between the nodes
+	for (int y = 0; y < gridHeight; ++y) {
+		for (int x = 0; x < gridWidth; ++x) {
+			LevelGridUnit& n = allGridUnits[(gridWidth * y) + x];
+
+			if (y > 0) { //get the above node
+				n.connected[0] = &allGridUnits[(gridWidth * (y - 1)) + x];
+			}
+			if (y < gridHeight - 1) { //get the below node
+				n.connected[1] = &allGridUnits[(gridWidth * (y + 1)) + x];
+			}
+			if (x > 0) { //get left node
+				n.connected[2] = &allGridUnits[(gridWidth * (y)) + (x - 1)];
+			}
+			if (x < gridWidth - 1) { //get right node
+				n.connected[3] = &allGridUnits[(gridWidth * (y)) + (x + 1)];
+			}
+			for (int i = 0; i < 4; ++i) {
+				if (n.connected[i]) {
+					if (n.connected[i]->type != '_') {
+						n.connected[i] = nullptr;
+					}
+				}
+			}
+		}
+	}
+}
+
+void CourseworkGame::GenerateLevel()
+{
+	levelData = new LevelData("TestGrid1.txt");
+	int nodeSize = levelData->GetNodeSize();
+	float nodeHeight = nodeSize * 0.25f;
+	for (int i = 0; i < levelData->GetGridSize(); i++)
+	{
+		LevelGridUnit lgu = levelData->GetAllGridUnits()[i];
+		int type = lgu.type;
+		if (isdigit(type))
+		{
+			float unitHeight = nodeHeight * (float(type) - 48);
+			AddCubeToWorld(lgu.position + Vector3(0, unitHeight,0), Vector3(1 * nodeSize / 2, unitHeight, 1 * nodeSize / 2) , 0);
+		}
+	}
+	AddFloorToWorld(Vector3(levelData->GetGridDimentions().x / 2 ,0, levelData->GetGridDimentions().y / 2) * nodeSize);
+}
+
+
 
 /*
 
@@ -371,7 +446,7 @@ A single function to add a large immoveable cube to the bottom of our world
 GameObject* CourseworkGame::AddFloorToWorld(const Vector3& position) {
 	GameObject* floor = new GameObject();
 
-	Vector3 floorSize = Vector3(100, 20, 100);
+	Vector3 floorSize = Vector3(200, 5, 200);
 	//AABBVolume* volume = new AABBVolume(floorSize);
 	OBBVolume* volume = new OBBVolume(floorSize);
 	floor->SetBoundingVolume((CollisionVolume*)volume);

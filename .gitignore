@@ -22,6 +22,7 @@ compile_commands.json
 CTestTestfile.cmake
 CSC8503/CSC8503.dir/*
 CSC8503CoreClasses/CSC8503CoreClasses.dir/*
+x64/*
 NCLCoreClasses/NCLCoreClasses.dir/*
 OpenGLRendering/OpenGLRendering.dir/*
 _deps
