@@ -433,7 +433,8 @@ void CourseworkGame::GenerateLevel()
 			AddCubeToWorld(lgu.position + Vector3(0, unitHeight,0), Vector3(1 * nodeSize / 2, unitHeight, 1 * nodeSize / 2) , 0);
 		}
 	}
-	AddFloorToWorld(Vector3(levelData->GetGridDimentions().x / 2 ,0, levelData->GetGridDimentions().y / 2) * nodeSize);
+	AddFloorToWorld(Vector3(levelData->GetGridDimentions().x / 2, -0.25, levelData->GetGridDimentions().y / 2) * nodeSize - Vector3(1 * nodeSize / 2, 0, 1 * nodeSize / 2)
+		, Vector3(levelData->GetGridDimentions().x / 2 * nodeSize, 5, levelData->GetGridDimentions().y * nodeSize / 2));
 }
 
 
@@ -443,10 +444,10 @@ void CourseworkGame::GenerateLevel()
 A single function to add a large immoveable cube to the bottom of our world
 
 */
-GameObject* CourseworkGame::AddFloorToWorld(const Vector3& position) {
+GameObject* CourseworkGame::AddFloorToWorld(const Vector3& position, Vector3 dimensions) {
 	GameObject* floor = new GameObject();
 
-	Vector3 floorSize = Vector3(200, 5, 200);
+	Vector3 floorSize = dimensions;
 	//AABBVolume* volume = new AABBVolume(floorSize);
 	OBBVolume* volume = new OBBVolume(floorSize);
 	floor->SetBoundingVolume((CollisionVolume*)volume);
@@ -633,7 +634,7 @@ StateGameObject* CourseworkGame::AddStateObjectToWorld(const Vector3& position)
 
 void CourseworkGame::InitDefaultFloor() {
 	//AddSphereToWorld(Vector3(50, 25, 0), 1.0f * 10.0f);
-	AddFloorToWorld(Vector3(0, -20, 0));
+	//AddFloorToWorld(Vector3(0, -20, 0));
 }
 
 void CourseworkGame::InitGameExamples() {
@@ -649,7 +650,7 @@ void CourseworkGame::InitSphereGridWorld(int numRows, int numCols, float rowSpac
 			AddSphereToWorld(position, radius, 1.0f);
 		}
 	}
-	AddFloorToWorld(Vector3(0, -2, 0));
+	//AddFloorToWorld(Vector3(0, -2, 0));
 }
 
 void CourseworkGame::InitMixedGridWorld(int numRows, int numCols, float rowSpacing, float colSpacing) {

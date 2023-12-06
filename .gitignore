@@ -26,3 +26,7 @@ x64/*
 NCLCoreClasses/NCLCoreClasses.dir/*
 OpenGLRendering/OpenGLRendering.dir/*
 _deps
+x64/Debug/CSC8503.exe
+x64/Debug/CSC8503.pdb
+x64/Debug/CSC8503CoreClasses.lib
+x64/Debug/CSC8503CoreClasses.pdb
