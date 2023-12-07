@@ -33,12 +33,14 @@ namespace NCL
 			int GetNodeSize() { return nodeSize; }
 			Vector2 GetGridDimentions() { return Vector2(gridWidth, gridHeight); }
 			std::string GetNavigationFile() { return navigationFile; }
+			std::vector<LevelGridUnit> GetWalkableSpots() { return walkableSpots; }
 		protected:
 			int nodeSize;
 			int gridWidth;
 			int gridHeight;
 			std::string navigationFile;
 			LevelGridUnit* allGridUnits;
+			std::vector<LevelGridUnit> walkableSpots;
 		};
 	}
 }

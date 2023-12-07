@@ -384,14 +384,14 @@ void CourseworkGame::InitWorld() {
 	
 	enemyObjects.clear();
 
-	playerObject = AddPlayerToWorld(Vector3(20*8, 20, 20*9));
+	playerObject = AddPlayerToWorld(Vector3(20*8, 10, 20*9));
 	
 	
 	//testStateObject = AddStateObjectToWorld(Vector3(0, 200, 0));
 	GenerateLevel();
-	for (int i = 0; i < 1; i++)
+	for (int i = 0; i < 5; i++)
 	{
-		enemyObjects.push_back(AddEnemyToWorld(Vector3(18 * 20, 20, (1+i * 3) * 20)));
+		enemyObjects.push_back(AddEnemyToWorld(Vector3(18 * 20, 10, (1+i * 3) * 20)));
 	}
 	//InitMixedGridWorld(15, 15, 3.5f, 3.5f);
 	//BridgeConstraintTest();

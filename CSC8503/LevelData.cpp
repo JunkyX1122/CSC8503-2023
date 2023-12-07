@@ -30,6 +30,10 @@ LevelData::LevelData(const std::string& filename) : LevelData()
 			infile >> type;
 			n.type = type;
 			n.position = Vector3((float)(x * nodeSize), 0, (float)(y * nodeSize));
+			if (type == '.')
+			{
+				walkableSpots.push_back(n);
+			}
 		}
 	}
 

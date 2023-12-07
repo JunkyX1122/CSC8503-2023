@@ -63,7 +63,7 @@ EnemyObject::EnemyObject(LevelData* l, GameWorld* g, const std::string& n)
 				{
 					if (isSearchingForSpot)
 					{
-						Vector3 target(RandomValue(0, maxX - 1) * size, 0, RandomValue(0, maxZ - 1) * size);
+						Vector3 target(levelData->GetWalkableSpots()[RandomValue(0,levelData->GetWalkableSpots().size()-1)].position);
 						target.y = 0;
 						this->SetTargetDestination(target);
 					}
