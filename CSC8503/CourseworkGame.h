@@ -8,6 +8,9 @@
 #include "PhysicsSystem.h"
 
 #include "StateGameObject.h"
+#include "StateMachine.h"
+#include "StateTransition.h"
+#include "State.h"
 
 #include <string>
 namespace NCL {
@@ -40,10 +43,12 @@ namespace NCL {
 			int GetGridSize() { return gridWidth * gridHeight; }
 			int GetNodeSize() { return nodeSize; }
 			Vector2 GetGridDimentions() { return Vector2(gridWidth, gridHeight); }
+			std::string GetNavigationFile() { return navigationFile; }
 		protected:
 			int nodeSize;
 			int gridWidth;
 			int gridHeight;
+			std::string navigationFile;
 			LevelGridUnit* allGridUnits;
 		};
 
@@ -83,6 +88,7 @@ namespace NCL {
 			void AttachCameraPlayer();
 			void MovePlayerObject(float dt);
 			void GenerateLevel();
+			void UpdatePathFindings(float dt);
 
 			GameObject* AddFloorToWorld(const Vector3& position, Vector3 dimensions);
 			GameObject* AddSphereToWorld(const Vector3& position, float radius, float inverseMass = 10.0f);
@@ -90,7 +96,7 @@ namespace NCL {
 			GameObject* AddCapsuleToWorld(const Vector3& position, float halfHeight, float radius, float inverseMass = 10.0f);
 
 			GameObject* AddPlayerToWorld(const Vector3& position);
-			GameObject* AddEnemyToWorld(const Vector3& position);
+			EnemyObject* AddEnemyToWorld(const Vector3& position);
 			GameObject* AddBonusToWorld(const Vector3& position);
 
 #ifdef USEVULKAN
@@ -138,6 +144,8 @@ namespace NCL {
 			Controller* playerController = nullptr;
 			Quaternion* playerCameraRotation;
 			LevelData* levelData = nullptr;
+
+			std::vector<EnemyObject*> enemyObjects = std::vector<EnemyObject*>{};
 		};
 	
 	

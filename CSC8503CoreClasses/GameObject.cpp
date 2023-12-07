@@ -15,7 +15,11 @@ GameObject::GameObject(const std::string& objectName)	{
 	renderObject	= nullptr;
 	networkObject	= nullptr;
 	isColliding = false;
+	
+
 }
+
+
 void GameObject::DrawHitbox()
 {
 	const CollisionVolume* volume = GetBoundingVolume();
@@ -53,11 +57,13 @@ void GameObject::DrawHitbox()
 	
 
 }
+
 GameObject::~GameObject()	{
 	delete boundingVolume;
 	delete physicsObject;
 	delete renderObject;
 	delete networkObject;
+	
 }
 
 bool GameObject::GetBroadphaseAABB(Vector3&outSize) const {
@@ -86,3 +92,4 @@ void GameObject::UpdateBroadphaseAABB() {
 		broadphaseAABB = mat * halfSizes;
 	}
 }
+

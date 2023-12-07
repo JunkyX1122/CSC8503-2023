@@ -45,13 +45,15 @@ void TestStateMachine()
 	State* A = new State([&](float dt)->void
 		{
 			std::cout << "STATE LETTER A!!!!!!!!!!!!!!!!!!!!!!\n";
+			data++;
 		});
 	State* B = new State([&](float dt)->void
 		{
 			std::cout << "STATE LETTER B!!!!!!!!!!!!!!!!!!!!!!\n";
+			data--;
 		});
 
-	StateTransition* stateAB = new StateTransition(A, B, [&](void)->bool { return data > 10; });
+	StateTransition* stateAB = new StateTransition(A, B, [&](void)->bool { return data > 10.0f; });
 	StateTransition* stateBA = new StateTransition(B, A, [&](void)->bool { return data < 0; });
 
 	testMachine->AddState(A);
@@ -68,30 +70,12 @@ vector<Vector3> testNodes;
 
 void TestPathfinding() 
 {
-	NavigationGrid grid("TestGrid1.txt");
-
-	NavigationPath outPath;
-
-	Vector3 startPos(80, 0, 10);
-	Vector3 endPos(80, 0, 80);
-
-	bool found = grid.FindPath(startPos, endPos, outPath);
-
-	Vector3 pos;
-	while (outPath.PopWaypoint(pos))
-	{
-		testNodes.push_back(pos);
-	}
+	
 }
 
 void DisplayPathfinding() 
 {
-	for (int i = 1; i < testNodes.size(); i++)
-	{
-		Vector3 a = testNodes[i - 1];
-		Vector3 b = testNodes[i];
-		Debug::DrawLine(a, b, Vector4(0, 1, 0, 1));
-	}
+	
 }
 
 void TestBehaviourTree()
@@ -322,19 +306,19 @@ int main() {
 	//TestNetworking();
 	//TestBehaviourTree();
 	//TestPushdownAutomata(w);
-
+	//TestStateMachine();
 	w->ShowOSPointer(false);
 	w->LockMouseToWindow(true);
 
 	CourseworkGame* g = new CourseworkGame();
-	//TestPathfinding();
+	TestPathfinding();
 	
 
 
 	w->GetTimer().GetTimeDeltaSeconds(); //Clear the timer so we don't get a larget first dt!
 	while (w->UpdateWindow() && !Window::GetKeyboard()->KeyDown(KeyCodes::ESCAPE)) {
 		float dt = w->GetTimer().GetTimeDeltaSeconds();
-		//DisplayPathfinding();
+		DisplayPathfinding();
 		if (dt > 0.1f) {
 			std::cout << "Skipping large time delta" << std::endl;
 			continue; //must have hit a breakpoint or something to have a 1 second frame time!

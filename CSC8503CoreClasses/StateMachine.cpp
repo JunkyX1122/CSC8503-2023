@@ -29,7 +29,8 @@ void StateMachine::AddTransition(StateTransition* t) {
 }
 
 void StateMachine::Update(float dt) {
-	if (activeState) {
+	if (activeState) 
+	{
 		activeState->Update(dt);
 	
 		//Get the transition set starting from this state node;

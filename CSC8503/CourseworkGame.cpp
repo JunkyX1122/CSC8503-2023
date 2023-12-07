@@ -134,6 +134,8 @@ void CourseworkGame::UpdateGame(float dt) {
 	}
 	Vector3 speed = playerObject->GetPhysicsObject()->GetLinearVelocity();
 	//Debug::Print("PlayerSpeed:" + std::to_string(speed.x) + " " + std::to_string(speed.y) + " " + std::to_string(speed.z) + "\n", Vector2(5, 50));
+
+	UpdatePathFindings(dt);
 	world->UpdateWorld(dt);
 	renderer->Update(dt);
 	physics->Update(dt);
@@ -144,7 +146,33 @@ void CourseworkGame::UpdateGame(float dt) {
 	Debug::UpdateRenderables(dt);
 }
 
-void CourseworkGame::UpdateKeys() {
+void CourseworkGame::UpdatePathFindings(float dt)
+{
+	for (EnemyObject* enemy : enemyObjects)
+	{
+
+		if(enemy->GetStateMachine()) enemy->GetStateMachine()->Update(dt);
+		/*
+		if (enemy->IsNavigationSet())
+		{
+			Vector3 target = playerObject->GetTransform().GetPosition();
+			target.y = 0;
+			//Debug::Print("PlayerPos:" + std::to_string(target.x) + " " + std::to_string(target.y) + " " + std::to_string(target.z) + "\n", Vector2(5, 50));
+			enemy->SetTargetDestination(target);
+			//target = enemy->GetTargetDestination();
+			//Debug::Print("Target:" + std::to_string(target.x) + " " + std::to_string(target.y) + " " + std::to_string(target.z) + "\n", Vector2(5, 60));
+			enemy->FindPath(enemy->GetTargetDestination());
+			enemy->DrawNavigationPath();
+
+			Vector3 direction = (enemy->GetNextPathNode() - enemy->GetTransform().GetPosition()).Normalised();
+			enemy->GetPhysicsObject()->AddForce(direction * 6.0f * dt);
+		}
+		*/
+	}
+}
+
+void CourseworkGame::UpdateKeys() 
+{
 	if (Window::GetKeyboard()->KeyPressed(KeyCodes::F1)) {
 		InitWorld(); //We can reset the simulation at any time with F1
 		selectionObject = nullptr;
@@ -353,10 +381,18 @@ void CourseworkGame::InitCamera() {
 void CourseworkGame::InitWorld() {
 	world->ClearAndErase();
 	physics->Clear();
-	playerObject = AddPlayerToWorld(Vector3(20, 20, 20));
+	
+	enemyObjects.clear();
+
+	playerObject = AddPlayerToWorld(Vector3(20*8, 20, 20*9));
+	
 	
 	//testStateObject = AddStateObjectToWorld(Vector3(0, 200, 0));
 	GenerateLevel();
+	for (int i = 0; i < 1; i++)
+	{
+		enemyObjects.push_back(AddEnemyToWorld(Vector3(18 * 20, 20, (1+i * 3) * 20)));
+	}
 	//InitMixedGridWorld(15, 15, 3.5f, 3.5f);
 	//BridgeConstraintTest();
 	//InitGameExamples();
@@ -373,7 +409,7 @@ LevelData::LevelData()
 LevelData::LevelData(const std::string& filename) : LevelData()
 {
 	std::ifstream infile(Assets::DATADIR + filename);
-
+	navigationFile = filename;
 	infile >> nodeSize; 
 	infile >> gridWidth; 
 	infile >> gridHeight; 
@@ -409,7 +445,7 @@ LevelData::LevelData(const std::string& filename) : LevelData()
 			}
 			for (int i = 0; i < 4; ++i) {
 				if (n.connected[i]) {
-					if (n.connected[i]->type != '_') {
+					if (n.connected[i]->type != '.') {
 						n.connected[i] = nullptr;
 					}
 				}
@@ -436,8 +472,6 @@ void CourseworkGame::GenerateLevel()
 	AddFloorToWorld(Vector3(levelData->GetGridDimentions().x / 2, -0.25, levelData->GetGridDimentions().y / 2) * nodeSize - Vector3(1 * nodeSize / 2, 0, 1 * nodeSize / 2)
 		, Vector3(levelData->GetGridDimentions().x / 2 * nodeSize, 5, levelData->GetGridDimentions().y * nodeSize / 2));
 }
-
-
 
 /*
 
@@ -543,11 +577,11 @@ GameObject* CourseworkGame::AddCapsuleToWorld(const Vector3& position, float hal
 }
 
 GameObject* CourseworkGame::AddPlayerToWorld(const Vector3& position) {
-	float meshSize		= 1.0f;
+	float meshSize		= 2.0f;
 	float inverseMass	= 50.0f;
 
 	GameObject* character = new GameObject();
-	CapsuleVolume* volume  = new CapsuleVolume(1.0f,1.0f);
+	CapsuleVolume* volume  = new CapsuleVolume(meshSize, meshSize);
 
 	character->SetBoundingVolume((CollisionVolume*)volume);
 
@@ -567,13 +601,15 @@ GameObject* CourseworkGame::AddPlayerToWorld(const Vector3& position) {
 	return character;
 }
 
-GameObject* CourseworkGame::AddEnemyToWorld(const Vector3& position) {
-	float meshSize		= 3.0f;
-	float inverseMass	= 0.5f;
+EnemyObject* CourseworkGame::AddEnemyToWorld(const Vector3& position) {
 
-	GameObject* character = new GameObject();
+	float meshSize = 2.0f;
+	float inverseMass = 50.0f;
+	EnemyObject* character = new EnemyObject(levelData->GetNavigationFile());
+	CapsuleVolume* volume = new CapsuleVolume(meshSize, meshSize);
 
-	AABBVolume* volume = new AABBVolume(Vector3(0.3f, 0.9f, 0.3f) * meshSize);
+	character->SetPlayerObjectTarget(playerObject);
+
 	character->SetBoundingVolume((CollisionVolume*)volume);
 
 	character->GetTransform()
@@ -586,6 +622,12 @@ GameObject* CourseworkGame::AddEnemyToWorld(const Vector3& position) {
 	character->GetPhysicsObject()->SetInverseMass(inverseMass);
 	character->GetPhysicsObject()->InitSphereInertia();
 
+	
+
+
+	
+
+	
 	world->AddGameObject(character);
 
 	return character;

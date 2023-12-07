@@ -1,7 +1,8 @@
 #pragma once
 #include "Transform.h"
 #include "CollisionVolume.h"
-
+#include "NavigationGrid.h"
+#include "StateMachine.h"
 using std::vector;
 
 namespace NCL::CSC8503 {
@@ -87,6 +88,8 @@ namespace NCL::CSC8503 {
 		}
 		void DrawHitbox();
 
+		
+
 	protected:
 		Transform			transform;
 
@@ -101,6 +104,8 @@ namespace NCL::CSC8503 {
 		std::string	name;
 
 		Vector3 broadphaseAABB;
+
+		
 	};
 }
 

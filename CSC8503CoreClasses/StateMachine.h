@@ -18,6 +18,8 @@ namespace NCL {
 
 			virtual void Update(float dt); //made it virtual!
 
+			int GetStateTotal() { return allStates.size(); }
+
 		protected:
 			State * activeState;
 

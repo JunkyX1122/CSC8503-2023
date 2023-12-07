@@ -62,7 +62,7 @@ NavigationGrid::NavigationGrid(const std::string&filename) : NavigationGrid() {
 					if (n.connected[i]->type == '.') {
 						n.costs[i]		= 1;
 					}
-					if (n.connected[i]->type == 'x') {
+					if (isdigit(n.connected[i]->type)) {
 						n.connected[i] = nullptr; //actually a wall, disconnect!
 					}
 				}
@@ -77,11 +77,11 @@ NavigationGrid::~NavigationGrid()	{
 
 bool NavigationGrid::FindPath(const Vector3& from, const Vector3& to, NavigationPath& outPath) {
 	//need to work out which node 'from' sits in, and 'to' sits in
-	int fromX = ((int)from.x / nodeSize);
-	int fromZ = ((int)from.z / nodeSize);
+	int fromX = ((int)round(from.x / nodeSize));
+	int fromZ = ((int)round(from.z / nodeSize));
 
-	int toX = ((int)to.x / nodeSize);
-	int toZ = ((int)to.z / nodeSize);
+	int toX = ((int)round(to.x / nodeSize));
+	int toZ = ((int)round(to.z / nodeSize));
 
 	if (fromX < 0 || fromX > gridWidth - 1 ||
 		fromZ < 0 || fromZ > gridHeight - 1) {
@@ -95,6 +95,9 @@ bool NavigationGrid::FindPath(const Vector3& from, const Vector3& to, Navigation
 
 	GridNode* startNode = &allNodes[(fromZ * gridWidth) + fromX];
 	GridNode* endNode	= &allNodes[(toZ * gridWidth) + toX];
+
+	if (isdigit(startNode->type)) return false;
+	if (isdigit(endNode->type)) return false;
 
 	std::vector<GridNode*>  openList;
 	std::vector<GridNode*>  closedList;
