@@ -1,4 +1,10 @@
 #pragma once
+
+const int LAYER_DEFAULT = 0;
+const int LAYER_TERRAIN = 1;
+const int LAYER_PLAYER = 2;
+const int LAYER_ENEMY = 3;
+
 namespace NCL {
 	enum class VolumeType {
 		AABB	= 1,
@@ -19,5 +25,7 @@ namespace NCL {
 		~CollisionVolume() {}
 
 		VolumeType type;
+		int collisionLayer;
+
 	};
 }

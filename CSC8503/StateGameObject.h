@@ -1,7 +1,7 @@
 #pragma once
 #include "GameObject.h"
 #include "LevelData.h"
-
+#include "GameWorld.h"
 namespace NCL {
     namespace CSC8503 {
         class StateMachine;
@@ -26,7 +26,7 @@ namespace NCL {
 		class EnemyObject : public StateGameObject
 		{
 		public:
-			EnemyObject(LevelData* l);
+			EnemyObject(LevelData* l, GameWorld* g, const std::string& name = "");
 			~EnemyObject();
 
 			bool IsNavigationSet()
@@ -84,6 +84,8 @@ namespace NCL {
 				levelData = data;
 			}
 
+			bool CanSeePlayer();
+
 		protected:
 			std::string navigationGridFile;
 			Vector3 targetDestination;
@@ -91,6 +93,8 @@ namespace NCL {
 			GameObject* playerObject;
 			LevelData* levelData = nullptr;
 			bool isSearchingForSpot = true;
+			GameWorld* gameWorld;
+
 		};
 	}
 }

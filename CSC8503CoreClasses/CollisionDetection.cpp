@@ -167,7 +167,9 @@ bool CollisionDetection::RayCapsuleIntersection(const Ray& r, const Transform& w
 	Transform endTransform;
 	endTransform.SetPosition(capsulePoint);
 
+	//Debug::DrawSphereLines(capsulePoint, worldTransform.GetOrientation(), volume.GetRadius() / 2);
 	bool collided = RaySphereIntersection(r, endTransform, volume.GetRadius()/2, collision);
+
 	return collided;
 }
 

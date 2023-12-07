@@ -526,8 +526,8 @@ GameObject* CourseworkGame::AddPlayerToWorld(const Vector3& position) {
 	float meshSize		= 2.0f;
 	float inverseMass	= 50.0f;
 
-	GameObject* character = new GameObject();
-	CapsuleVolume* volume  = new CapsuleVolume(meshSize, meshSize);
+	GameObject* character = new GameObject("Player");
+	CapsuleVolume* volume  = new CapsuleVolume(meshSize, meshSize, LAYER_PLAYER);
 
 	character->SetBoundingVolume((CollisionVolume*)volume);
 
@@ -541,7 +541,6 @@ GameObject* CourseworkGame::AddPlayerToWorld(const Vector3& position) {
 	character->GetPhysicsObject()->SetInverseMass(inverseMass);
 	character->GetPhysicsObject()->InitSphereInertia();
 	character->GetPhysicsObject()->SetElasticity(0.0f);
-
 	world->AddGameObject(character);
 	playerCameraRotation = new Quaternion(Vector3(0, 0, 0), 0);
 	return character;
@@ -551,8 +550,8 @@ EnemyObject* CourseworkGame::AddEnemyToWorld(const Vector3& position) {
 
 	float meshSize = 2.0f;
 	float inverseMass = 50.0f;
-	EnemyObject* character = new EnemyObject(levelData);
-	CapsuleVolume* volume = new CapsuleVolume(meshSize, meshSize);
+	EnemyObject* character = new EnemyObject(levelData,world, "GenericEnemy");
+	CapsuleVolume* volume = new CapsuleVolume(meshSize, meshSize, LAYER_ENEMY);
 
 	character->SetPlayerObjectTarget(playerObject);
 

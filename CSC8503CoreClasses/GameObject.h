@@ -104,8 +104,6 @@ namespace NCL::CSC8503 {
 		std::string	name;
 
 		Vector3 broadphaseAABB;
-
-		
 	};
 }
 

@@ -11,6 +11,7 @@ namespace NCL {
 				this->node			= node;
 				this->collidedAt	= collidedAt;
 				this->rayDistance	= 0.0f;
+
 			}
 
 			RayCollision() {
@@ -34,6 +35,7 @@ namespace NCL {
 		protected:
 			Vector3 position;	//World space position
 			Vector3 direction;	//Normalised world space direction
+
 		};
 	}
 }

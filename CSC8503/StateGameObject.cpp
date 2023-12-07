@@ -4,7 +4,7 @@
 #include "State.h"
 #include "PhysicsObject.h"
 #include "Debug.h"
-
+#include "Ray.h"
 using namespace NCL;
 using namespace CSC8503;
 
@@ -40,11 +40,12 @@ void StateGameObject::MoveRight(float dt)
 
 
 
-EnemyObject::EnemyObject(LevelData* l)
+EnemyObject::EnemyObject(LevelData* l, GameWorld* g, const std::string& n)
 {
 	levelData = l;
+	gameWorld = g;
 	navigationGridFile = l->GetNavigationFile();
-
+	name = n;
 	State* Wandering = new State([&](float dt)->void
 		{
 			if (levelData)
@@ -91,8 +92,8 @@ EnemyObject::EnemyObject(LevelData* l)
 			}
 		});
 
-	StateTransition* wanderToChase = new StateTransition(Wandering, ChasePlayer, [&](void)->bool { return false;  });
-	StateTransition* chaseToWander = new StateTransition(ChasePlayer, Wandering, [&](void)->bool { return true; });
+	StateTransition* wanderToChase = new StateTransition(Wandering, ChasePlayer, [&](void)->bool { return  CanSeePlayer(); });
+	StateTransition* chaseToWander = new StateTransition(ChasePlayer, Wandering, [&](void)->bool { return !CanSeePlayer(); });
 
 	this->GetStateMachine()->AddState(Wandering);
 	this->GetStateMachine()->AddState(ChasePlayer);
@@ -145,4 +146,27 @@ void EnemyObject::MoveAlongPath(float dt)
 {
 	Vector3 direction = (this->GetNextPathNode() - this->GetTransform().GetPosition()).Normalised();
 	this->GetPhysicsObject()->AddForce(direction * 6.0f * dt);
+}
+
+bool EnemyObject::CanSeePlayer()
+{
+	if (playerObject)
+	{
+
+		Ray ray(this->GetTransform().GetPosition(), (playerObject->GetTransform().GetPosition() - this->GetTransform().GetPosition()).Normalised());
+
+		RayCollision closestCollision;
+		std::vector<int> ignoreList = { LAYER_ENEMY };
+		if (gameWorld->Raycast(ray, closestCollision, true, nullptr, ignoreList))
+		{
+			GameObject* selectionObject = (GameObject*)closestCollision.node;
+			//Debug::DrawLine(this->GetTransform().GetPosition(), playerObject->GetTransform().GetPosition(), Vector4(1, 0, 0, 0.1f));
+			Debug::DrawLine(this->GetTransform().GetPosition(), closestCollision.collidedAt, Vector4(0, 1, 0, 0.1f));
+			if (selectionObject->GetBoundingVolume()->collisionLayer == LAYER_PLAYER)
+			{
+				return true;
+			}
+		}
+	}
+	return false;
 }
