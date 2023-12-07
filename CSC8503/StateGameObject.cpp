@@ -14,41 +14,6 @@ StateGameObject::StateGameObject()
 	stateMachine = new StateMachine();
 
 }
-
-EnemyObject::EnemyObject(std::string filename)
-{
-	navigationGridFile = filename;
-
-	State* Wandering = new State([&](float dt)->void
-		{
-
-		});
-	State* ChasePlayer = new State([&](float dt)->void
-		{
-			if (playerObject)
-			{
-				Vector3 target = playerObject->GetTransform().GetPosition();
-				target.y = 0;
-
-				this->SetTargetDestination(target);
-
-				this->FindPath(this->GetTargetDestination());
-				this->DrawNavigationPath();
-
-				Vector3 direction = (this->GetNextPathNode() - this->GetTransform().GetPosition()).Normalised();
-				this->GetPhysicsObject()->AddForce(direction * 6.0f * dt);
-			}
-		});
-
-	StateTransition* wanderToChase = new StateTransition(Wandering, ChasePlayer, [&](void)->bool { return true;  });
-	StateTransition* chaseToWander = new StateTransition(ChasePlayer, Wandering, [&](void)->bool { return false; });
-
-	this->GetStateMachine()->AddState(Wandering);
-	this->GetStateMachine()->AddState(ChasePlayer);
-
-	this->GetStateMachine()->AddTransition(wanderToChase);
-	this->GetStateMachine()->AddTransition(chaseToWander);
-}
 StateGameObject::~StateGameObject() {
 	delete stateMachine;
 }
@@ -71,6 +36,70 @@ void StateGameObject::MoveRight(float dt)
 	counter -= dt;
 }
 
+
+
+
+
+EnemyObject::EnemyObject(LevelData* l)
+{
+	levelData = l;
+	navigationGridFile = l->GetNavigationFile();
+
+	State* Wandering = new State([&](float dt)->void
+		{
+			if (levelData)
+			{
+				int size = levelData->GetGridSize();
+				int maxX = levelData->GetGridDimentions().x;
+				int maxZ = levelData->GetGridDimentions().y;
+				bool foundPosition = false;
+				Vector3 target;
+				if ((this->GetTransform().GetPosition() - this->GetTargetDestination()).Length() < levelData->GetNodeSize())
+				{
+					isSearchingForSpot = true;
+				}
+				while (!foundPosition)
+				{
+					if (isSearchingForSpot)
+					{
+						Vector3 target(RandomValue(0, maxX - 1) * size, 0, RandomValue(0, maxZ - 1) * size);
+						target.y = 0;
+						this->SetTargetDestination(target);
+					}
+					if (this->FindPath(this->GetTargetDestination()))
+					{
+						this->DrawNavigationPath();
+						this->MoveAlongPath(dt);
+						foundPosition = true;
+						isSearchingForSpot = false;
+					}
+				}
+			}
+		});
+	State* ChasePlayer = new State([&](float dt)->void
+		{
+			if (playerObject)
+			{
+				Vector3 target = playerObject->GetTransform().GetPosition();
+				target.y = 0;
+
+				this->SetTargetDestination(target);
+
+				this->FindPath(this->GetTargetDestination());
+				this->DrawNavigationPath();
+				this->MoveAlongPath(dt);
+			}
+		});
+
+	StateTransition* wanderToChase = new StateTransition(Wandering, ChasePlayer, [&](void)->bool { return false;  });
+	StateTransition* chaseToWander = new StateTransition(ChasePlayer, Wandering, [&](void)->bool { return true; });
+
+	this->GetStateMachine()->AddState(Wandering);
+	this->GetStateMachine()->AddState(ChasePlayer);
+
+	this->GetStateMachine()->AddTransition(wanderToChase);
+	this->GetStateMachine()->AddTransition(chaseToWander);
+}
 
 bool EnemyObject::FindPath(Vector3 target)
 {
@@ -110,4 +139,10 @@ void EnemyObject::DrawNavigationPath()
 		}
 		Debug::DrawLine(a, b, Vector4(0, 0, 1, 0.25f));
 	}
+}
+
+void EnemyObject::MoveAlongPath(float dt)
+{
+	Vector3 direction = (this->GetNextPathNode() - this->GetTransform().GetPosition()).Normalised();
+	this->GetPhysicsObject()->AddForce(direction * 6.0f * dt);
 }

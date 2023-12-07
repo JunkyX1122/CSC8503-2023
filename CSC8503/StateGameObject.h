@@ -1,5 +1,6 @@
 #pragma once
 #include "GameObject.h"
+#include "LevelData.h"
 
 namespace NCL {
     namespace CSC8503 {
@@ -25,7 +26,7 @@ namespace NCL {
 		class EnemyObject : public StateGameObject
 		{
 		public:
-			EnemyObject(std::string filename);
+			EnemyObject(LevelData* l);
 			~EnemyObject();
 
 			bool IsNavigationSet()
@@ -76,11 +77,20 @@ namespace NCL {
 				playerObject = o;
 			}
 
+			void MoveAlongPath(float dt);
+
+			void SetLevelDataRef(LevelData* data)
+			{
+				levelData = data;
+			}
+
 		protected:
 			std::string navigationGridFile;
 			Vector3 targetDestination;
 			vector<Vector3> pathFindingNodes;
 			GameObject* playerObject;
+			LevelData* levelData = nullptr;
+			bool isSearchingForSpot = true;
 		};
 	}
 }
