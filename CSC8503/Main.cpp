@@ -314,7 +314,7 @@ int main() {
 	TestPathfinding();
 	
 
-
+	bool pausing = false;
 	w->GetTimer().GetTimeDeltaSeconds(); //Clear the timer so we don't get a larget first dt!
 	while (w->UpdateWindow() && !Window::GetKeyboard()->KeyDown(KeyCodes::ESCAPE)) {
 		float dt = w->GetTimer().GetTimeDeltaSeconds();
@@ -333,10 +333,15 @@ int main() {
 		if (Window::GetKeyboard()->KeyPressed(KeyCodes::T)) {
 			w->SetWindowPosition(0, 0);
 		}
+		if (Window::GetKeyboard()->KeyPressed(KeyCodes::F5)) {
+			pausing = !pausing;
+		}
 
 		w->SetTitle("Gametech frame time:" + std::to_string(1000.0f * dt));
-
-		g->UpdateGame(dt);
+		if (!pausing)
+		{
+			g->UpdateGame(dt);
+		}
 	}
 	Window::DestroyGameWindow();
 }

@@ -163,11 +163,11 @@ bool EnemyObject::CanSeePlayer()
 			Debug::DrawLine(this->GetTransform().GetPosition(), closestCollision.collidedAt, Vector4(0, 1, 0, 0.1f));
 			if (selectionObject->GetBoundingVolume()->collisionLayer == LAYER_PLAYER)
 			{
-				std::cout << "can\n";
+				//std::cout << "can\n";
 				return true;
 			}
 		}
 	}
-	std::cout << "can't\n";
+	//std::cout << "can't\n";
 	return false;
 }
