@@ -71,7 +71,14 @@ namespace NCL {
 			{
 				elasticity = f;
 			}
-
+			int GetNumberOfCollisions() const
+			{
+				return numberOfCollisions;
+			}
+			void SetNumberOfCollisions(int i)
+			{
+				numberOfCollisions += i;
+			}
 		protected:
 			const CollisionVolume* volume;
 			Transform*		transform;
@@ -88,6 +95,8 @@ namespace NCL {
 			Vector3 torque;
 			Vector3 inverseInertia;
 			Matrix3 inverseInteriaTensor;
+
+			int numberOfCollisions = 0;
 
 		};
 	}

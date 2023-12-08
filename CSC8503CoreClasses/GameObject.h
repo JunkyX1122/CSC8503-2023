@@ -93,7 +93,14 @@ namespace NCL::CSC8503 {
 		}
 		void DrawHitbox();
 
-		
+		void AddToIgnoreList(GameObject* g)
+		{
+			ignoreList.push_back(g);
+		}
+		std::vector<GameObject*> GetObjectIgnoreList()
+		{
+			return ignoreList;
+		}
 
 	protected:
 		Transform			transform;
@@ -109,6 +116,8 @@ namespace NCL::CSC8503 {
 		std::string	name;
 
 		Vector3 broadphaseAABB;
+
+		std::vector<GameObject*> ignoreList = std::vector<GameObject*>{};
 	};
 
 	class PlayerObject : public GameObject

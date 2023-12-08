@@ -54,9 +54,9 @@ namespace NCL {
 			void UpdatePathFindings(float dt);
 
 			GameObject* AddFloorToWorld(const Vector3& position, Vector3 dimensions);
-			GameObject* AddSphereToWorld(const Vector3& position, float radius, float inverseMass = 10.0f);
-			GameObject* AddCubeToWorld(const Vector3& position, Vector3 dimensions, float inverseMass = 10.0f);
-			GameObject* AddCapsuleToWorld(const Vector3& position, float halfHeight, float radius, float inverseMass = 10.0f);
+			GameObject* AddSphereToWorld(const Vector3& position, float radius, float inverseMass = 10.0f, int collisionLayer = LAYER_DEFAULT, bool isCollidable = true, bool rendered = true);
+			GameObject* AddCubeToWorld(const Vector3& position, Vector3 dimensions, float inverseMass = 10.0f, int collisionLayer = LAYER_DEFAULT, bool isCollidable = true, bool rendered = true);
+			GameObject* AddCapsuleToWorld(const Vector3& position, float halfHeight, float radius, float inverseMass = 10.0f, int collisionLayer = LAYER_DEFAULT, bool isCollidable = true, bool rendered = true);
 
 			PlayerObject* AddPlayerToWorld(const Vector3& position);
 			EnemyObject* AddEnemyToWorld(const Vector3& position);
@@ -104,6 +104,7 @@ namespace NCL {
 			StateGameObject* testStateObject;
 
 			PlayerObject* playerObject = nullptr;
+			GameObject* playerGroundedCollider = nullptr;
 			Controller* playerController = nullptr;
 			Quaternion* playerCameraRotation;
 			LevelData* levelData = nullptr;

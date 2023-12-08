@@ -129,7 +129,10 @@ void CourseworkGame::UpdateGame(float dt) {
 		
 		AttachCameraPlayer();
 		MovePlayerObject(dt);
-		
+		if (playerObject && playerGroundedCollider)
+		{
+			playerGroundedCollider->GetTransform().SetPosition(playerObject->GetTransform().GetPosition() + Vector3(0, -1.5f, 0));
+		}
 	}
 	
 
@@ -142,6 +145,7 @@ void CourseworkGame::UpdateGame(float dt) {
 	world->UpdateWorld(dt);
 	renderer->Update(dt);
 	physics->Update(dt);
+
 	renderer->Render();
 
 	
@@ -312,10 +316,7 @@ void CourseworkGame::MovePlayerObject(float dt)
 		0.05f);
 	if (Window::GetMouse()->ButtonPressed(NCL::MouseButtons::Right)) 
 	{
-		if (selectionObject) {	//set colour to deselected;
-			selectionObject->GetRenderObject()->SetColour(Vector4(1, 1, 1, 1));
-			selectionObject = nullptr;
-		}
+
 
 		Ray ray = CollisionDetection::BuildRayFromCentre(world->GetMainCamera());
 
@@ -324,7 +325,7 @@ void CourseworkGame::MovePlayerObject(float dt)
 		if (world->Raycast(ray, closestCollision, true, nullptr, ignoreList))
 		{
 			//Debug::DrawLine(ray.GetPosition(), closestCollision.collidedAt, Vector4(0, 1, 0, 1), 500.0f);
-			selectionObject = (GameObject*)closestCollision.node;
+			//selectionObject = (GameObject*)closestCollision.node;
 			playerObject->SetGrapplePoint(closestCollision.collidedAt);
 			playerObject->SetGrappling(true);
 			//selectionObject->GetRenderObject()->SetColour(Vector4(0, 1, 0, 1));
@@ -392,12 +393,12 @@ void CourseworkGame::MovePlayerObject(float dt)
 	}
 
 
-	if (Window::GetKeyboard()->KeyPressed(KeyCodes::SPACE)) {
+	if (Window::GetKeyboard()->KeyPressed(KeyCodes::SPACE) ) {
 		//std::cout << "JUMP\n";
 
 		playerObject->GetPhysicsObject()->ApplyLinearImpulse(Vector3(0, 32.0f, 0) * dt);
 	}
-	
+	playerGroundedCollider->GetPhysicsObject()->SetLinearVelocity(playerObject->GetPhysicsObject()->GetLinearVelocity());
 }
 
 void CourseworkGame::DebugObjectMovement() {
@@ -453,7 +454,10 @@ void CourseworkGame::InitWorld() {
 	
 	enemyObjects.clear();
 	playerObject = AddPlayerToWorld(Vector3(20 * 8, 10, 20 * 9));
-	if (false)
+	playerGroundedCollider = AddSphereToWorld(playerObject->GetTransform().GetPosition(), 1.0f, 0.1f, LAYER_DEFAULT, false, false);
+	playerGroundedCollider->AddToIgnoreList(playerObject);
+	std::cout << "\n" << playerGroundedCollider->GetObjectIgnoreList().size() << "\n";
+	if (true)
 	{
 		GenerateLevel();
 		for (int i = 0; i < 5; i++)
@@ -525,14 +529,11 @@ rigid body representation. This and the cube function will let you build a lot o
 physics worlds. You'll probably need another function for the creation of OBB cubes too.
 
 */
-
-
-
-GameObject* CourseworkGame::AddSphereToWorld(const Vector3& position, float radius, float inverseMass) {
+GameObject* CourseworkGame::AddSphereToWorld(const Vector3& position, float radius, float inverseMass, int collisionLayer, bool isCollidable, bool rendered) {
 	GameObject* sphere = new GameObject();
 
 	Vector3 sphereSize = Vector3(radius, radius, radius);
-	SphereVolume* volume = new SphereVolume(radius);
+	SphereVolume* volume = new SphereVolume(radius, collisionLayer, isCollidable);
 	
 	sphere->SetBoundingVolume((CollisionVolume*)volume);
 	
@@ -540,7 +541,8 @@ GameObject* CourseworkGame::AddSphereToWorld(const Vector3& position, float radi
 		.SetScale(sphereSize)
 		.SetPosition(position);
 
-	sphere->SetRenderObject(new RenderObject(&sphere->GetTransform(), sphereMesh, basicTex, basicShader));
+
+	if(rendered) sphere->SetRenderObject(new RenderObject(&sphere->GetTransform(), sphereMesh, basicTex, basicShader));
 	sphere->SetPhysicsObject(new PhysicsObject(&sphere->GetTransform(), sphere->GetBoundingVolume()));
 
 	sphere->GetPhysicsObject()->SetInverseMass(inverseMass);
@@ -551,17 +553,17 @@ GameObject* CourseworkGame::AddSphereToWorld(const Vector3& position, float radi
 	return sphere;
 }
 
-GameObject* CourseworkGame::AddCubeToWorld(const Vector3& position, Vector3 dimensions, float inverseMass) {
+GameObject* CourseworkGame::AddCubeToWorld(const Vector3& position, Vector3 dimensions, float inverseMass, int collisionLayer, bool isCollidable, bool rendered) {
 	GameObject* cube = new GameObject();
 
-	AABBVolume* volume = new AABBVolume(dimensions);
+	AABBVolume* volume = new AABBVolume(dimensions, collisionLayer, isCollidable);
 	cube->SetBoundingVolume((CollisionVolume*)volume);
 
 	cube->GetTransform()
 		.SetPosition(position)
 		.SetScale(dimensions * 2);
 
-	cube->SetRenderObject(new RenderObject(&cube->GetTransform(), cubeMesh, basicTex, basicShader));
+	if (rendered) cube->SetRenderObject(new RenderObject(&cube->GetTransform(), cubeMesh, basicTex, basicShader));
 	cube->SetPhysicsObject(new PhysicsObject(&cube->GetTransform(), cube->GetBoundingVolume()));
 
 	cube->GetPhysicsObject()->SetInverseMass(inverseMass);
@@ -572,17 +574,17 @@ GameObject* CourseworkGame::AddCubeToWorld(const Vector3& position, Vector3 dime
 	return cube;
 }
 
-GameObject* CourseworkGame::AddCapsuleToWorld(const Vector3& position, float halfHeight, float radius , float inverseMass) {
+GameObject* CourseworkGame::AddCapsuleToWorld(const Vector3& position, float halfHeight, float radius , float inverseMass, int collisionLayer, bool isCollidable, bool rendered) {
 	GameObject* capsule = new GameObject();
 
-	CapsuleVolume* volume = new CapsuleVolume(halfHeight, radius);
+	CapsuleVolume* volume = new CapsuleVolume(halfHeight, radius, collisionLayer, isCollidable);
 	capsule->SetBoundingVolume((CollisionVolume*)volume);
 
 	capsule->GetTransform()
 		.SetPosition(position)
 		.SetScale(Vector3(radius, halfHeight, radius));
 
-	capsule->SetRenderObject(new RenderObject(&capsule->GetTransform(), capsuleMesh, basicTex, basicShader));
+	if (rendered) capsule->SetRenderObject(new RenderObject(&capsule->GetTransform(), capsuleMesh, basicTex, basicShader));
 	capsule->SetPhysicsObject(new PhysicsObject(&capsule->GetTransform(), capsule->GetBoundingVolume()));
 
 	capsule->GetPhysicsObject()->SetInverseMass(inverseMass);
@@ -697,9 +699,9 @@ void CourseworkGame::InitDefaultFloor() {
 }
 
 void CourseworkGame::InitGameExamples() {
-	AddPlayerToWorld(Vector3(0, 5, 0));
-	AddEnemyToWorld(Vector3(5, 5, 0));
-	AddBonusToWorld(Vector3(10, 5, 0));
+	//AddPlayerToWorld(Vector3(0, 5, 0));
+	//AddEnemyToWorld(Vector3(5, 5, 0));
+	//AddBonusToWorld(Vector3(10, 5, 0));
 }
 
 void CourseworkGame::InitSphereGridWorld(int numRows, int numCols, float rowSpacing, float colSpacing, float radius) {

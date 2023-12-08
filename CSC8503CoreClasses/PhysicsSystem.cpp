@@ -196,6 +196,8 @@ multiple frames won't flood the set with duplicates.
 */
 void PhysicsSystem::BasicCollisionDetection() 
 {
+	
+
 	std::vector <GameObject*>::const_iterator first;
 	std::vector <GameObject*>::const_iterator last;
 	gameWorld.GetObjectIterators(first, last);
@@ -208,6 +210,7 @@ void PhysicsSystem::BasicCollisionDetection()
 		{
 			if ((*j)->GetPhysicsObject() == nullptr) continue;
 
+			if ((*i)->GetPhysicsObject()->GetInverseMass() + (*j)->GetPhysicsObject()->GetInverseMass() <= 0) continue;
 			CollisionDetection::CollisionInfo info;
 
 			if (CollisionDetection::ObjectIntersection(*i, *j, info)) 
@@ -470,7 +473,7 @@ void PhysicsSystem::ClearForces() {
 	gameWorld.OperateOnContents(
 		[](GameObject* o) {
 			o->GetPhysicsObject()->ClearForces();
-			o->SetColliding(false);
+			//o->SetColliding(false);
 		}
 	);
 }

@@ -80,6 +80,7 @@ EnemyObject::EnemyObject(LevelData* l, GameWorld* g, const std::string& n)
 		});
 	State* ChasePlayer = new State([&](float dt)->void
 		{
+			isSearchingForSpot = true;
 			if (playerObject)
 			{
 				Vector3 target = playerObject->GetTransform().GetPosition();
@@ -153,7 +154,6 @@ bool EnemyObject::CanSeePlayer()
 {
 	if (playerObject)
 	{
-
 		Ray ray(this->GetTransform().GetPosition(), (playerObject->GetTransform().GetPosition() - this->GetTransform().GetPosition()).Normalised());
 
 		RayCollision closestCollision;
@@ -165,9 +165,11 @@ bool EnemyObject::CanSeePlayer()
 			Debug::DrawLine(this->GetTransform().GetPosition(), closestCollision.collidedAt, Vector4(0, 1, 0, 0.1f));
 			if (selectionObject->GetBoundingVolume()->collisionLayer == LAYER_PLAYER)
 			{
+				std::cout << "can\n";
 				return true;
 			}
 		}
 	}
+	std::cout << "can't\n";
 	return false;
 }

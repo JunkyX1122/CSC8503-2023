@@ -226,9 +226,27 @@ Vector3 CollisionDetection::ClosestPointAABBPoint(Vector3 point, Vector3 AABBPos
 }
 
 bool CollisionDetection::ObjectIntersection(GameObject* a, GameObject* b, CollisionInfo& collisionInfo) {
+
+	if (a->GetObjectIgnoreList().size() > 0)
+	{
+		for (GameObject* object : a->GetObjectIgnoreList())
+		{
+			if (object == b) return false;
+		}
+	}
+
+	if (b->GetObjectIgnoreList().size() > 0)
+	{
+		for (GameObject* object : b->GetObjectIgnoreList())
+		{
+			if (object == a) return false;
+		}
+	}
+	
 	const CollisionVolume* volA = a->GetBoundingVolume();
 	const CollisionVolume* volB = b->GetBoundingVolume();
 
+	
 	if (!volA || !volB) {
 		return false;
 	}
