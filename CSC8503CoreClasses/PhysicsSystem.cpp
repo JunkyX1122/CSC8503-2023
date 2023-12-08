@@ -460,7 +460,7 @@ ones in the next 'game' frame.
 void PhysicsSystem::ClearForces() {
 	gameWorld.OperateOnContents(
 		[](GameObject* o) {
-			o->DrawHitbox();
+			//o->DrawHitbox();
 			o->GetPhysicsObject()->ClearForces();
 			o->SetColliding(false);
 		}

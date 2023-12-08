@@ -73,7 +73,11 @@ namespace NCL {
 			const CapsuleVolume& volumeA, const Transform& worldTransformA,
 			const SphereVolume& volumeB, const Transform& worldTransformB, CollisionInfo& collisionInfo);
 
-		//TODO ADD THIS PROPERLY
+		static bool CapsuleIntersection(
+			const CapsuleVolume& volumeA, const Transform& worldTransformA,
+			const CapsuleVolume& volumeB, const Transform& worldTransformB, CollisionInfo& collisionInfo);
+
+
 
 		static void ClosestPointsTwoLines(float* ratio1, float* ratio2, Vector3 firstLineStart, Vector3 firstLineEnd, Vector3 secondLineStart, Vector3 secondLineEnd);
 		static void ClosestPointsPointLine(float* lineRatio, Vector3 point, Vector3 lineStart, Vector3 lineEnd);

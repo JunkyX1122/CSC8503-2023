@@ -85,6 +85,14 @@ namespace NCL {
 			}
 
 			bool CanSeePlayer();
+			float GetMoveSpeed() const
+			{
+				return moveSpeed;
+			}
+			void SetMoveSpeed(float f)
+			{
+				moveSpeed = f;
+			}
 
 		protected:
 			std::string navigationGridFile;
@@ -94,7 +102,7 @@ namespace NCL {
 			LevelData* levelData = nullptr;
 			bool isSearchingForSpot = true;
 			GameWorld* gameWorld;
-
+			float moveSpeed = 6.0f;
 		};
 	}
 }

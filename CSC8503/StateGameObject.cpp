@@ -69,6 +69,7 @@ EnemyObject::EnemyObject(LevelData* l, GameWorld* g, const std::string& n)
 					}
 					if (this->FindPath(this->GetTargetDestination()))
 					{
+						this->SetMoveSpeed(6.0f);
 						this->DrawNavigationPath();
 						this->MoveAlongPath(dt);
 						foundPosition = true;
@@ -83,7 +84,7 @@ EnemyObject::EnemyObject(LevelData* l, GameWorld* g, const std::string& n)
 			{
 				Vector3 target = playerObject->GetTransform().GetPosition();
 				target.y = 0;
-
+				this->SetMoveSpeed(6.0f * 2);
 				this->SetTargetDestination(target);
 
 				this->FindPath(this->GetTargetDestination());
@@ -145,7 +146,7 @@ void EnemyObject::DrawNavigationPath()
 void EnemyObject::MoveAlongPath(float dt)
 {
 	Vector3 direction = (this->GetNextPathNode() - this->GetTransform().GetPosition()).Normalised();
-	this->GetPhysicsObject()->AddForce(direction * 6.0f * dt);
+	this->GetPhysicsObject()->AddForce(direction * this->GetMoveSpeed() * dt);
 }
 
 bool EnemyObject::CanSeePlayer()

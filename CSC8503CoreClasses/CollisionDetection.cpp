@@ -175,6 +175,8 @@ bool CollisionDetection::RayCapsuleIntersection(const Ray& r, const Transform& w
 
 void CollisionDetection::ClosestPointsTwoLines(float* ratio1, float* ratio2, Vector3 firstLineStart, Vector3 firstLineEnd, Vector3 secondLineStart, Vector3 secondLineEnd)
 {
+	//Debug::DrawLine(firstLineStart, firstLineEnd, Vector4(1,0,0,1));
+	//Debug::DrawLine(secondLineStart, secondLineEnd, Vector4(1, 0, 0, 1));
 	Vector3 firstLineVector = firstLineEnd - firstLineStart;
 	Vector3 secondLineVector = secondLineEnd - secondLineStart;
 
@@ -204,6 +206,7 @@ void CollisionDetection::ClosestPointsTwoLines(float* ratio1, float* ratio2, Vec
 
 	*ratio1 = std::clamp((*ratio1), 0.0f, 1.0f);
 	*ratio2 = std::clamp((*ratio2), 0.0f, 1.0f);
+	//Debug::DrawLine(firstLineStart + firstLineVector * (*ratio1), secondLineStart + secondLineVector * (*ratio2), Vector4(0, 1, 0, 1));
 }
 void CollisionDetection::ClosestPointsPointLine(float* lineRatio, Vector3 point, Vector3 lineStart, Vector3 lineEnd)
 {
@@ -251,7 +254,9 @@ bool CollisionDetection::ObjectIntersection(GameObject* a, GameObject* b, Collis
 		return OBBIntersection((OBBVolume&)*volA, transformA, (OBBVolume&)*volB, transformB, collisionInfo);
 	}
 	//Two Capsules
-
+	if (pairType == VolumeType::Capsule) {
+		return CapsuleIntersection((CapsuleVolume&)*volA, transformA, (CapsuleVolume&)*volB, transformB, collisionInfo);
+	}
 	//AABB vs Sphere pairs
 	if (volA->type == VolumeType::AABB && volB->type == VolumeType::Sphere) {
 		return AABBSphereIntersection((AABBVolume&)*volA, transformA, (SphereVolume&)*volB, transformB, collisionInfo);
@@ -271,7 +276,6 @@ bool CollisionDetection::ObjectIntersection(GameObject* a, GameObject* b, Collis
 		collisionInfo.b = a;
 		return OBBSphereIntersection((OBBVolume&)*volB, transformB, (SphereVolume&)*volA, transformA, collisionInfo);
 	}
-
 	//Capsule vs other interactions
 	if (volA->type == VolumeType::Capsule && volB->type == VolumeType::Sphere) {
 		return SphereCapsuleIntersection((CapsuleVolume&)*volA, transformA, (SphereVolume&)*volB, transformB, collisionInfo);
@@ -376,7 +380,8 @@ bool CollisionDetection::SphereIntersection(const SphereVolume& volumeA, const T
 {
 	float radii = volumeA.GetRadius() + volumeB.GetRadius();
 	Vector3 delta = worldTransformB.GetPosition() - worldTransformA.GetPosition();
-
+	//Debug::DrawSphereLines(worldTransformA.GetPosition(), worldTransformA.GetOrientation(), volumeA.GetRadius());
+	//Debug::DrawSphereLines(worldTransformB.GetPosition(), worldTransformB.GetOrientation(), volumeB.GetRadius());
 	float deltaLength = delta.Length();
 
 	if (deltaLength <= radii)
@@ -451,6 +456,80 @@ bool  CollisionDetection::OBBSphereIntersection(const OBBVolume& volumeA, const 
 	}
 	return collided;
 }
+
+
+//CAPSULE
+bool CollisionDetection::CapsuleIntersection(
+	const CapsuleVolume& volumeA, const Transform& worldTransformA,
+	const CapsuleVolume& volumeB, const Transform& worldTransformB, CollisionInfo& collisionInfo)
+{
+	Vector3 capsuleCentreA = worldTransformA.GetPosition();
+	Vector3 capsuleDirA = GetCapsuleDirection(worldTransformA);
+	Vector3 capsuleCentreB = worldTransformB.GetPosition();
+	Vector3 capsuleDirB = GetCapsuleDirection(worldTransformB);
+
+	Vector3 capsuleBottomA = capsuleCentreA - capsuleDirA * volumeA.GetHalfHeight() / 2;
+	Vector3 capsuleTopA = capsuleCentreA + capsuleDirA * volumeA.GetHalfHeight() / 2;
+
+	Vector3 capsuleBottomB = capsuleCentreB - capsuleDirB * volumeB.GetHalfHeight() / 2;
+	Vector3 capsuleTopB = capsuleCentreB + capsuleDirB * volumeB.GetHalfHeight() / 2;
+
+	float closeCapA = 0.0f;
+	float closeCapB = 0.0f;
+
+	ClosestPointsTwoLines(&closeCapA, &closeCapB, capsuleBottomA, capsuleTopA, capsuleBottomB, capsuleTopB);
+	float closeCapA_Hold = closeCapA;
+	float closeCapB_Hold = closeCapB;
+	Vector3 capsulePointA = capsuleBottomA + (capsuleTopA - capsuleBottomA) * closeCapA;
+	Vector3 capsulePointB = capsuleBottomB + (capsuleTopB - capsuleBottomB) * closeCapB;
+	float distTestBase = (capsulePointA - capsulePointB).Length();
+
+	Vector3 testEndsA[2] = { capsuleBottomA, capsuleTopA };
+	Vector3 testEndsB[2] = { capsuleBottomB, capsuleTopB };
+	float testEndsRatio[2] = { 0.0f, 1.0f };
+	for (int a = 0; a < 2; a++)
+	{
+		float testB_pointA = 0.0f;
+		ClosestPointsPointLine(&testB_pointA, testEndsA[a], capsuleBottomB, capsuleTopB);
+		Vector3 capsulePointB_Test = capsuleBottomB + (capsuleTopB - capsuleBottomB) * testB_pointA;
+		if ((capsulePointB_Test - testEndsA[a]).Length() < distTestBase)
+		{
+			distTestBase = (capsulePointB_Test - testEndsA[a]).Length();
+			closeCapB = testB_pointA;
+			closeCapA = testEndsRatio[a];
+		}
+	}
+
+	for (int b = 0; b < 2; b++)
+	{
+		float testA_pointB = 0.0f;
+		ClosestPointsPointLine(&testA_pointB, testEndsB[b], capsuleBottomA, capsuleTopA);
+		Vector3 capsulePointA_Test = capsuleBottomA + (capsuleTopA - capsuleBottomA) * testA_pointB;
+		if ((capsulePointA_Test - testEndsB[b]).Length() < distTestBase)
+		{
+			distTestBase = (capsulePointA_Test - testEndsB[b]).Length();
+			closeCapA = testA_pointB;
+			closeCapB = testEndsRatio[b];
+		}
+	}
+	capsulePointA = capsuleBottomA + (capsuleTopA - capsuleBottomA) * closeCapA;
+	capsulePointB = capsuleBottomB + (capsuleTopB - capsuleBottomB) * closeCapB;
+	//Debug::DrawLine(capsulePointA, capsulePointB);
+
+	SphereVolume tempSphereA(volumeA.GetRadius() / 2); 
+	Transform tempWorldTransformA = worldTransformA;
+	tempWorldTransformA.SetPosition(capsulePointA);
+	tempWorldTransformA.SetOrientation(worldTransformA.GetOrientation()); 
+
+	SphereVolume tempSphereB(volumeB.GetRadius() / 2);
+	Transform tempWorldTransformB = worldTransformB;
+	tempWorldTransformB.SetPosition(capsulePointB);
+	tempWorldTransformB.SetOrientation(worldTransformB.GetOrientation());
+
+	bool collision = SphereIntersection(tempSphereA, tempWorldTransformA, tempSphereB, tempWorldTransformB, collisionInfo);
+	return collision;
+}
+
 
 bool CollisionDetection::AABBCapsuleIntersection(
 	const CapsuleVolume& volumeA, const Transform& worldTransformA,
@@ -600,7 +679,6 @@ bool CollisionDetection::OBBCapsuleIntersection(
 	
 	return collided;
 }
-
 
 
 
