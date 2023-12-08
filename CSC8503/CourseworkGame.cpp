@@ -189,6 +189,9 @@ void CourseworkGame::UpdateKeys()
 	if (Window::GetKeyboard()->KeyPressed(KeyCodes::P)) {
 		inPlayerMode = !inPlayerMode;
 	}
+	if (Window::GetKeyboard()->KeyPressed(KeyCodes::F3)) {
+		physics->ToggleDrawHitboxes();
+	}
 	
 	//Running certain physics updates in a consistent order might cause some
 	//bias in the calculations - the same objects might keep 'winning' the constraint

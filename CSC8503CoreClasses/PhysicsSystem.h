@@ -21,11 +21,17 @@ namespace NCL {
 			}
 
 			void SetGravity(const Vector3& g);
+
+			void ToggleDrawHitboxes()
+			{
+				drawHitboxes = !drawHitboxes;
+			}
 		protected:
 			void BasicCollisionDetection();
 			void BroadPhase();
 			void NarrowPhase();
 
+			void DrawHitboxes();
 			void ClearForces();
 
 			void IntegrateAccel(float dt);
@@ -49,6 +55,7 @@ namespace NCL {
 			std::vector<CollisionDetection::CollisionInfo> broadphaseCollisionsVec;
 			bool useBroadPhase		= true;
 			int numCollisionFrames	= 5;
+			bool drawHitboxes = false;
 		};
 	}
 }

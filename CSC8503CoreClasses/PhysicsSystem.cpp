@@ -116,7 +116,7 @@ void PhysicsSystem::Update(float dt) {
 		dTOffset -= realDT;
 		iteratorCount++;
 	}
-
+	if (drawHitboxes) DrawHitboxes();
 	ClearForces();	//Once we've finished with the forces, reset them to zero
 
 	UpdateCollisionList(); //Remove any old collisions
@@ -451,7 +451,13 @@ void PhysicsSystem::IntegrateVelocity(float dt)
 		object->SetAngularVelocity(angVel);
 	}
 }
-
+void PhysicsSystem::DrawHitboxes() {
+	gameWorld.OperateOnContents(
+		[](GameObject* o) {
+			o->DrawHitbox();
+		}
+	);
+}
 /*
 Once we're finished with a physics update, we have to
 clear out any accumulated forces, ready to receive new
@@ -460,7 +466,6 @@ ones in the next 'game' frame.
 void PhysicsSystem::ClearForces() {
 	gameWorld.OperateOnContents(
 		[](GameObject* o) {
-			//o->DrawHitbox();
 			o->GetPhysicsObject()->ClearForces();
 			o->SetColliding(false);
 		}
