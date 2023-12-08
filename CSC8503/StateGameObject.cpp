@@ -59,28 +59,26 @@ EnemyObject::EnemyObject(LevelData* l, GameWorld* g, const std::string& n)
 				{
 					isSearchingForSpot = true;
 				}
-				while (!foundPosition)
+				
+				if (isSearchingForSpot)
 				{
-					if (isSearchingForSpot)
-					{
-						Vector3 target(levelData->GetWalkableSpots()[RandomValue(0,levelData->GetWalkableSpots().size()-1)].position);
-						target.y = 0;
-						this->SetTargetDestination(target);
-					}
-					if (this->FindPath(this->GetTargetDestination()))
-					{
-						this->SetMoveSpeed(6.0f);
-						this->DrawNavigationPath();
-						this->MoveAlongPath(dt);
-						foundPosition = true;
-						isSearchingForSpot = false;
-					}
+					Vector3 target(levelData->GetWalkableSpots()[RandomValue(0,levelData->GetWalkableSpots().size()-1)].position);
+					target.y = 0;
+					this->SetTargetDestination(target);
 				}
+				if (this->FindPath(this->GetTargetDestination()))
+				{
+					this->SetMoveSpeed(6.0f);
+					this->DrawNavigationPath();
+					this->MoveAlongPath(dt);
+					foundPosition = true;
+					isSearchingForSpot = false;
+				}
+				
 			}
 		});
 	State* ChasePlayer = new State([&](float dt)->void
 		{
-			isSearchingForSpot = true;
 			if (playerObject)
 			{
 				Vector3 target = playerObject->GetTransform().GetPosition();
