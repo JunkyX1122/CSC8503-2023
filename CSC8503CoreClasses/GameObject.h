@@ -56,6 +56,11 @@ namespace NCL::CSC8503 {
 			return name;
 		}
 
+		void SetName(std::string n)
+		{
+			name = n;
+		}
+
 		virtual void OnCollisionBegin(GameObject* otherObject) {
 			isColliding = true;
 			//std::cout << "OnCollisionBegin event occured!\n";
@@ -104,6 +109,21 @@ namespace NCL::CSC8503 {
 		std::string	name;
 
 		Vector3 broadphaseAABB;
+	};
+
+	class PlayerObject : public GameObject
+	{
+	public:
+		void SetGrapplePoint(Vector3 v)
+		{
+			grapplePoint = v;
+		}
+		Vector3 GetGrapplePoint() { return grapplePoint; }
+		bool IsGrappling() { return isGrappling; }
+		void SetGrappling(bool b) { isGrappling = b; }
+	protected:
+		bool isGrappling;
+		Vector3 grapplePoint;
 	};
 }
 

@@ -58,7 +58,7 @@ namespace NCL {
 			GameObject* AddCubeToWorld(const Vector3& position, Vector3 dimensions, float inverseMass = 10.0f);
 			GameObject* AddCapsuleToWorld(const Vector3& position, float halfHeight, float radius, float inverseMass = 10.0f);
 
-			GameObject* AddPlayerToWorld(const Vector3& position);
+			PlayerObject* AddPlayerToWorld(const Vector3& position);
 			EnemyObject* AddEnemyToWorld(const Vector3& position);
 			GameObject* AddBonusToWorld(const Vector3& position);
 
@@ -103,7 +103,7 @@ namespace NCL {
 			StateGameObject* AddStateObjectToWorld(const Vector3& position);
 			StateGameObject* testStateObject;
 
-			GameObject* playerObject = nullptr;
+			PlayerObject* playerObject = nullptr;
 			Controller* playerController = nullptr;
 			Quaternion* playerCameraRotation;
 			LevelData* levelData = nullptr;

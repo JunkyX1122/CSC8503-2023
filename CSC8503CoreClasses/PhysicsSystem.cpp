@@ -215,7 +215,10 @@ void PhysicsSystem::BasicCollisionDetection()
 				(*i)->SetColliding(true);
 				(*j)->SetColliding(true);
 				//std::cout << "Collision between " << (*i)->GetName() << " and " << (*j) -> GetName() << std::endl;
-				ImpulseResolveCollision(*info.a, *info.b, info.point);
+				if ((*i)->GetBoundingVolume()->isCollidable && (*j)->GetBoundingVolume()->isCollidable)
+				{
+					ImpulseResolveCollision(*info.a, *info.b, info.point);
+				}
 				info.framesLeft = numCollisionFrames;
 				allCollisions.insert(info);
 			}

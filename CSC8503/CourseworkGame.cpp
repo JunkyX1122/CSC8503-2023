@@ -116,6 +116,7 @@ void CourseworkGame::UpdateGame(float dt) {
 	}
 	*/
 	//Debug::DrawLine(Vector3(), Vector3(0, 100, 0), Vector4(1, 0, 0, 1));
+	
 	if (!inPlayerMode)
 	{
 		SelectObject();
@@ -123,17 +124,17 @@ void CourseworkGame::UpdateGame(float dt) {
 	}
 	else
 	{
+		//Window::GetWindow()->ShowOSPointer(true);
+		//Window::GetWindow()->LockMouseToWindow(false);
 		
-		MovePlayerObject(dt);
 		AttachCameraPlayer();
+		MovePlayerObject(dt);
+		
 	}
-	UpdateKeys();
 	
-	if (testStateObject)
-	{
-		Debug::DrawLine(Vector3(0, 0, 0), testStateObject->GetTransform().GetPosition(), Vector4(0, 0, 1, 1));
-		testStateObject->Update(dt);
-	}
+
+	UpdateKeys();
+
 	Vector3 speed = playerObject->GetPhysicsObject()->GetLinearVelocity();
 	//Debug::Print("PlayerSpeed:" + std::to_string(speed.x) + " " + std::to_string(speed.y) + " " + std::to_string(speed.z) + "\n", Vector2(5, 50));
 
@@ -190,6 +191,8 @@ void CourseworkGame::UpdateKeys()
 	}
 	if (Window::GetKeyboard()->KeyPressed(KeyCodes::P)) {
 		inPlayerMode = !inPlayerMode;
+		Window::GetWindow()->ShowOSPointer(!inPlayerMode);
+		Window::GetWindow()->LockMouseToWindow(inPlayerMode);
 	}
 	if (Window::GetKeyboard()->KeyPressed(KeyCodes::F3)) {
 		physics->ToggleDrawHitboxes();
@@ -251,6 +254,7 @@ void CourseworkGame::LockedObjectMovement() {
 
 void CourseworkGame::AttachCameraPlayer()
 {
+	
 	Vector3 objPos = playerObject->GetTransform().GetPosition();
 
 	Vector3 camOrientation = playerCameraRotation->ToEuler();
@@ -275,7 +279,7 @@ void CourseworkGame::AttachCameraPlayer()
 	Vector3 camPos = (
 		Matrix4::Translation(objPos + offset) *
 		Matrix4(*playerCameraRotation) *
-		Matrix4::Translation(Vector3(0,0,10))
+		Matrix4::Translation(Vector3(0,0,13))
 		).GetPositionVector();
 
 	Matrix4 temp = Matrix4::BuildViewMatrix(camPos, objPos + offset, Vector3(0, 1, 0));
@@ -294,17 +298,62 @@ void CourseworkGame::AttachCameraPlayer()
 	world->GetMainCamera().SetPosition(world->GetMainCamera().GetPosition() * (1.0f - dampen) + camPos * dampen);
 	world->GetMainCamera().SetPitch(angles.x);
 	world->GetMainCamera().SetYaw(angles.y);
+
+	
 }
 
-void CourseworkGame::MovePlayerObject(float dt) {
+void CourseworkGame::MovePlayerObject(float dt) 
+{
+	
+	Quaternion camQuat = Quaternion::EulerAnglesToQuaternion(world->GetMainCamera().GetPitch(), world->GetMainCamera().GetYaw(), 0);
+	Debug::DrawSphereLines(
+		(Matrix4::Translation(world->GetMainCamera().GetPosition()) * Matrix4(camQuat) * Matrix4::Translation(Vector3(0, 0, -5))).GetPositionVector(),
+		camQuat,
+		0.05f);
+	if (Window::GetMouse()->ButtonPressed(NCL::MouseButtons::Right)) 
+	{
+		if (selectionObject) {	//set colour to deselected;
+			selectionObject->GetRenderObject()->SetColour(Vector4(1, 1, 1, 1));
+			selectionObject = nullptr;
+		}
+
+		Ray ray = CollisionDetection::BuildRayFromCentre(world->GetMainCamera());
+
+		RayCollision closestCollision;
+		std::vector<int> ignoreList = { LAYER_PLAYER };
+		if (world->Raycast(ray, closestCollision, true, nullptr, ignoreList))
+		{
+			//Debug::DrawLine(ray.GetPosition(), closestCollision.collidedAt, Vector4(0, 1, 0, 1), 500.0f);
+			selectionObject = (GameObject*)closestCollision.node;
+			playerObject->SetGrapplePoint(closestCollision.collidedAt);
+			playerObject->SetGrappling(true);
+			//selectionObject->GetRenderObject()->SetColour(Vector4(0, 1, 0, 1));
+			//return true;
+		}
+		else
+		{
+			playerObject->SetGrapplePoint(Vector3(0,0,0));
+			playerObject->SetGrappling(false);
+		}
+
+	}
+	if (!Window::GetMouse()->ButtonDown(NCL::MouseButtons::Right))
+	{
+		playerObject->SetGrapplePoint(Vector3(0, 0, 0));
+		playerObject->SetGrappling(false);
+	}
+	if (playerObject->IsGrappling())
+	{
+		float grappleForce = 1.0f;
+		Debug::DrawLine(playerObject->GetGrapplePoint(), playerObject->GetTransform().GetPosition(), Vector4(0.5f, 0, 1, 1));
+		Vector3 direction = (playerObject->GetGrapplePoint() - playerObject->GetTransform().GetPosition()).Normalised();
+		playerObject->GetPhysicsObject()->AddForce(direction * grappleForce);
+	}
+
 	Matrix4 view = world->GetMainCamera().BuildViewMatrix();
 	Matrix4 camWorld = view.Inverse();
 
 	Vector3 rightAxis = Vector3(camWorld.GetColumn(0)); //view is inverse of model!
-
-	//forward is more tricky -  camera forward is 'into' the screen...
-	//so we can take a guess, and use the cross of straight up, and
-	//the right axis, to hopefully get a vector that's good enough!
 
 	Vector3 fwdAxis = Vector3::Cross(Vector3(0, 1, 0), rightAxis);
 	fwdAxis.y = 0.0f;
@@ -313,12 +362,11 @@ void CourseworkGame::MovePlayerObject(float dt) {
 	Vector3 fwdAxisCamera = Vector3::Cross(Vector3(0, 1, 0), rightAxis);
 	fwdAxisCamera.Normalise();
 
-	//*
 	
-	//*/
+
+
 
 	float spd = 20.0f * dt ;
-
 
 	Vector3 moveDirection = Vector3(0, 0, 0);
 	if (Window::GetKeyboard()->KeyDown(KeyCodes::W)) {
@@ -340,13 +388,12 @@ void CourseworkGame::MovePlayerObject(float dt) {
 	
 	if (Window::GetKeyboard()->KeyPressed(KeyCodes::F))
 	{
-		playerObject->GetPhysicsObject()->SetLinearVelocity(Vector3(0, 0, 0));
-		playerObject->GetPhysicsObject()->ApplyLinearImpulse(fwdAxisCamera * 128.0f * dt);
+		playerObject->GetPhysicsObject()->ApplyLinearImpulse(camQuat*Vector3(0,0,-1) * 128.0f * dt);
 	}
 	if (Window::GetKeyboard()->KeyPressed(KeyCodes::SPACE)) {
 		//std::cout << "JUMP\n";
 
-		playerObject->GetPhysicsObject()->ApplyLinearImpulse(Vector3(0, 16.0f, 0) * dt);
+		playerObject->GetPhysicsObject()->ApplyLinearImpulse(Vector3(0, 32.0f, 0) * dt);
 	}
 	
 }
@@ -484,8 +531,9 @@ GameObject* CourseworkGame::AddSphereToWorld(const Vector3& position, float radi
 
 	Vector3 sphereSize = Vector3(radius, radius, radius);
 	SphereVolume* volume = new SphereVolume(radius);
+	
 	sphere->SetBoundingVolume((CollisionVolume*)volume);
-
+	
 	sphere->GetTransform()
 		.SetScale(sphereSize)
 		.SetPosition(position);
@@ -543,11 +591,12 @@ GameObject* CourseworkGame::AddCapsuleToWorld(const Vector3& position, float hal
 	return capsule;
 }
 
-GameObject* CourseworkGame::AddPlayerToWorld(const Vector3& position) {
+PlayerObject* CourseworkGame::AddPlayerToWorld(const Vector3& position) {
 	float meshSize		= 2.0f;
 	float inverseMass	= 50.0f;
 
-	GameObject* character = new GameObject("Player");
+	PlayerObject* character = new PlayerObject();
+	character->SetName("Player");
 	CapsuleVolume* volume  = new CapsuleVolume(meshSize, meshSize, LAYER_PLAYER);
 
 	character->SetBoundingVolume((CollisionVolume*)volume);
@@ -711,7 +760,7 @@ bool CourseworkGame::SelectObject() {
 			Window::GetWindow()->LockMouseToWindow(true);
 		}
 	}
-	if (inSelectionMode) {
+	if (true) {
 		Debug::Print("Press Q to change to camera mode!", Vector2(5, 85));
 
 		if (Window::GetMouse()->ButtonDown(NCL::MouseButtons::Left)) {
@@ -720,7 +769,7 @@ bool CourseworkGame::SelectObject() {
 				selectionObject = nullptr;
 			}
 
-			Ray ray = CollisionDetection::BuildRayFromMouse(world->GetMainCamera());
+			Ray ray = CollisionDetection::BuildRayFromCentre(world->GetMainCamera());
 
 			RayCollision closestCollision;
 			if (world->Raycast(ray, closestCollision, true)) 

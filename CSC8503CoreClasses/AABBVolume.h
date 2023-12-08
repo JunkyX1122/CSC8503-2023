@@ -7,10 +7,11 @@ namespace NCL {
 	class AABBVolume : CollisionVolume
 	{
 	public:
-		AABBVolume(const Vector3& halfDims, int layer = LAYER_DEFAULT) {
+		AABBVolume(const Vector3& halfDims, int layer = LAYER_DEFAULT, bool isC = true) {
 			type		= VolumeType::AABB;
 			halfSizes	= halfDims;
 			collisionLayer = layer;
+			isCollidable = isC;
 		}
 		~AABBVolume() {
 

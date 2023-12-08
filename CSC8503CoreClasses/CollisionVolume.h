@@ -26,6 +26,7 @@ namespace NCL {
 
 		VolumeType type;
 		int collisionLayer;
+		bool isCollidable = true;
 
 	};
 }
