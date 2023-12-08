@@ -390,6 +390,8 @@ void CourseworkGame::MovePlayerObject(float dt)
 	{
 		playerObject->GetPhysicsObject()->ApplyLinearImpulse(camQuat*Vector3(0,0,-1) * 128.0f * dt);
 	}
+
+
 	if (Window::GetKeyboard()->KeyPressed(KeyCodes::SPACE)) {
 		//std::cout << "JUMP\n";
 
