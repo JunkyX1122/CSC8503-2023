@@ -82,7 +82,7 @@ CourseworkGame::~CourseworkGame()	{
 
 void CourseworkGame::UpdateGame(float dt) {
 	
-	if (!inSelectionMode) {
+	if (!inSelectionMode && !inPlayerMode) {
 		world->GetMainCamera().UpdateCamera(dt);
 	}
 	
@@ -92,8 +92,9 @@ void CourseworkGame::UpdateGame(float dt) {
 	else {
 		Debug::Print("(G)ravity off", Vector2(5, 95), Debug::RED);
 	}
-
+	/*
 	RayCollision closestCollision;
+	
 	if (Window::GetKeyboard()->KeyPressed(KeyCodes::K) && selectionObject) {
 		Vector3 rayPos;
 		Vector3 rayDir;
@@ -113,7 +114,7 @@ void CourseworkGame::UpdateGame(float dt) {
 			objClosest->GetRenderObject()->SetColour(Vector4(1, 0, 1, 1));
 		}
 	}
-
+	*/
 	//Debug::DrawLine(Vector3(), Vector3(0, 100, 0), Vector4(1, 0, 0, 1));
 	if (!inPlayerMode)
 	{
@@ -122,8 +123,9 @@ void CourseworkGame::UpdateGame(float dt) {
 	}
 	else
 	{
-		AttachCameraPlayer();
+		
 		MovePlayerObject(dt);
+		AttachCameraPlayer();
 	}
 	UpdateKeys();
 	
@@ -258,8 +260,8 @@ void CourseworkGame::AttachCameraPlayer()
 	pitch	-= controller.GetNamedAxis("YLook");
 	yaw -= controller.GetNamedAxis("XLook");
 
-	pitch = std::min(pitch, 90.0f);
-	pitch = std::max(pitch, -90.0f);
+	pitch = std::min(pitch, 89.0f);
+	pitch = std::max(pitch, -89.0f);
 
 	if (yaw < 0) {
 		yaw += 360.0f;
@@ -269,16 +271,18 @@ void CourseworkGame::AttachCameraPlayer()
 	}
 
 	*playerCameraRotation = Quaternion::EulerAnglesToQuaternion(pitch, yaw, camOrientation.z);
-
+	Vector3 offset(0, 4, 0);
 	Vector3 camPos = (
-		Matrix4::Translation(objPos + Vector3(0,10,0)) *
+		Matrix4::Translation(objPos + offset) *
 		Matrix4(*playerCameraRotation) *
-		Matrix4::Translation(Vector3(0,0,20))
+		Matrix4::Translation(Vector3(0,0,10))
 		).GetPositionVector();
 
-	Matrix4 temp = Matrix4::BuildViewMatrix(camPos, objPos, Vector3(0, 1, 0));
+	Matrix4 temp = Matrix4::BuildViewMatrix(camPos, objPos + offset, Vector3(0, 1, 0));
 
 	Matrix4 modelMat = temp.Inverse();
+
+	playerObject->GetTransform().SetOrientation(Quaternion::EulerAnglesToQuaternion(0,yaw,0));
 	//*
 
 	
@@ -286,7 +290,8 @@ void CourseworkGame::AttachCameraPlayer()
 	Quaternion q(modelMat);
 	Vector3 angles = q.ToEuler(); //nearly there now!
 
-	world->GetMainCamera().SetPosition(camPos);
+	float dampen = 0.3;
+	world->GetMainCamera().SetPosition(world->GetMainCamera().GetPosition() * (1.0f - dampen) + camPos * dampen);
 	world->GetMainCamera().SetPitch(angles.x);
 	world->GetMainCamera().SetYaw(angles.y);
 }
@@ -305,31 +310,43 @@ void CourseworkGame::MovePlayerObject(float dt) {
 	fwdAxis.y = 0.0f;
 	fwdAxis.Normalise();
 
+	Vector3 fwdAxisCamera = Vector3::Cross(Vector3(0, 1, 0), rightAxis);
+	fwdAxisCamera.Normalise();
+
 	//*
 	
 	//*/
-	float spd = 20.0f * dt;
 
+	float spd = 20.0f * dt ;
+
+
+	Vector3 moveDirection = Vector3(0, 0, 0);
 	if (Window::GetKeyboard()->KeyDown(KeyCodes::W)) {
-		playerObject->GetPhysicsObject()->AddForce(fwdAxis * spd);
+		moveDirection = (fwdAxis);
 	}
 
 	if (Window::GetKeyboard()->KeyDown(KeyCodes::S)) {
-		playerObject->GetPhysicsObject()->AddForce(-fwdAxis * spd);
+		moveDirection = (-fwdAxis);
 	}
 
 	if (Window::GetKeyboard()->KeyDown(KeyCodes::A)) {
-		playerObject->GetPhysicsObject()->AddForce(-rightAxis * spd);
+		moveDirection = (-rightAxis);
 	}
 
 	if (Window::GetKeyboard()->KeyDown(KeyCodes::D)) {
-		playerObject->GetPhysicsObject()->AddForce(rightAxis * spd);
+		moveDirection = (rightAxis);
 	}
-
+	playerObject->GetPhysicsObject()->AddForce(moveDirection * spd);
+	
+	if (Window::GetKeyboard()->KeyPressed(KeyCodes::F))
+	{
+		playerObject->GetPhysicsObject()->SetLinearVelocity(Vector3(0, 0, 0));
+		playerObject->GetPhysicsObject()->ApplyLinearImpulse(fwdAxisCamera * 128.0f * dt);
+	}
 	if (Window::GetKeyboard()->KeyPressed(KeyCodes::SPACE)) {
 		//std::cout << "JUMP\n";
 
-		playerObject->GetPhysicsObject()->ApplyLinearImpulse(Vector3(0, 0.1f, 0));
+		playerObject->GetPhysicsObject()->ApplyLinearImpulse(Vector3(0, 16.0f, 0) * dt);
 	}
 	
 }
@@ -386,20 +403,21 @@ void CourseworkGame::InitWorld() {
 	physics->Clear();
 	
 	enemyObjects.clear();
-
-	playerObject = AddPlayerToWorld(Vector3(20*8, 10, 20*9));
-	
-	
-	//testStateObject = AddStateObjectToWorld(Vector3(0, 200, 0));
-	GenerateLevel();
-	for (int i = 0; i < 5; i++)
+	playerObject = AddPlayerToWorld(Vector3(20 * 8, 10, 20 * 9));
+	if (false)
 	{
-		enemyObjects.push_back(AddEnemyToWorld(Vector3(18 * 20, 10, (1+i * 3) * 20)));
+		GenerateLevel();
+		for (int i = 0; i < 5; i++)
+		{
+			enemyObjects.push_back(AddEnemyToWorld(Vector3(18 * 20, 10, (1 + i * 3) * 20)));
+		}
 	}
-	//InitMixedGridWorld(15, 15, 3.5f, 3.5f);
-	//BridgeConstraintTest();
-	//InitGameExamples();
-	//InitDefaultFloor();
+	else
+	{
+		InitMixedGridWorld(15, 15, 3.5f, 3.5f);
+		BridgeConstraintTest();
+		InitDefaultFloor();
+	}
 	
 }
 
@@ -624,7 +642,7 @@ StateGameObject* CourseworkGame::AddStateObjectToWorld(const Vector3& position)
 
 void CourseworkGame::InitDefaultFloor() {
 	//AddSphereToWorld(Vector3(50, 25, 0), 1.0f * 10.0f);
-	//AddFloorToWorld(Vector3(0, -20, 0));
+	AddFloorToWorld(Vector3(0, -20, 0), Vector3(200,5,200));
 }
 
 void CourseworkGame::InitGameExamples() {
