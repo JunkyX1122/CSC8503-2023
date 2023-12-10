@@ -130,9 +130,12 @@ namespace NCL::CSC8503 {
 		Vector3 GetGrapplePoint() { return grapplePoint; }
 		bool IsGrappling() { return isGrappling; }
 		void SetGrappling(bool b) { isGrappling = b; }
+		Vector3 GetRespawnPoint() { return respawnPoint; }
+		void SetRespawnPoint(Vector3 v) { respawnPoint = v; }
 	protected:
 		bool isGrappling;
 		Vector3 grapplePoint;
+		Vector3 respawnPoint;
 	};
 }
 

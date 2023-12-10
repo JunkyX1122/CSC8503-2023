@@ -15,7 +15,7 @@ using namespace CSC8503;
 
 PhysicsSystem::PhysicsSystem(GameWorld& g) : gameWorld(g)	{
 	applyGravity	= false;
-	useBroadPhase	= false;	
+	useBroadPhase	= true;	
 	dTOffset		= 0.0f;
 	globalDamping	= 0.995f;
 	SetGravity(Vector3(0.0f, -9.8f, 0.0f));
@@ -87,7 +87,7 @@ void PhysicsSystem::Update(float dt) {
 
 	GameTimer t;
 	t.GetTimeDeltaSeconds();
-
+	
 	if (useBroadPhase) {
 		UpdateObjectAABBs();
 	}
@@ -364,8 +364,14 @@ void PhysicsSystem::NarrowPhase()
 		CollisionDetection::CollisionInfo info = *i;
 		if (CollisionDetection::ObjectIntersection(info.a, info.b, info))
 		{
+			(info.a)->SetColliding(true);
+			(info.b)->SetColliding(true);
 			info.framesLeft = numCollisionFrames;
-			ImpulseResolveCollision(*info.a, *info.b, info.point);
+			if ((info.a)->GetBoundingVolume()->isCollidable && (info.b)->GetBoundingVolume()->isCollidable)
+			{
+				ImpulseResolveCollision(*info.a, *info.b, info.point);
+			}
+			
 			allCollisions.insert(info);
 		}
 	}

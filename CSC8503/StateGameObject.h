@@ -103,6 +103,7 @@ namespace NCL {
 			bool isSearchingForSpot = true;
 			GameWorld* gameWorld;
 			float moveSpeed = 6.0f;
+			float timeTraveling = 0.0f;
 		};
 	}
 }

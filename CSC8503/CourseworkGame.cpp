@@ -136,7 +136,13 @@ void CourseworkGame::UpdateGame(float dt) {
 	{
 		//Window::GetWindow()->ShowOSPointer(true);
 		//Window::GetWindow()->LockMouseToWindow(false);
-		
+		Vector3 playerPos = playerObject->GetTransform().GetPosition();
+		if (playerPos.x < outOfBounds[0] || playerPos.z < outOfBounds[1] ||
+			playerPos.x > outOfBounds[2] || playerPos.z > outOfBounds[3])
+		{
+			playerObject->GetTransform().SetPosition(playerObject->GetRespawnPoint());
+			playerObject->GetPhysicsObject()->SetLinearVelocity(Vector3());
+		}
 		AttachCameraPlayer();
 		MovePlayerObject(dt);
 		if (playerObject && playerGroundedCollider)
@@ -407,7 +413,7 @@ void CourseworkGame::MovePlayerObject(float dt)
 		playerObject->GetPhysicsObject()->ApplyLinearImpulse(camQuat*Vector3(0,0,-1) * 128.0f * dt);
 	}
 
-	std::cout << playerGroundedCollider->IsColliding() << "\n";
+	//std::cout << playerGroundedCollider->IsColliding() << "\n";
 	if (Window::GetKeyboard()->KeyPressed(KeyCodes::SPACE) && playerGroundedCollider->IsColliding()) {
 		//std::cout << "JUMP\n";
 
@@ -468,7 +474,8 @@ void CourseworkGame::InitWorld() {
 	physics->Clear();
 	
 	enemyObjects.clear();
-	playerObject = AddPlayerToWorld(Vector3(20 * 8, 10, 20 * 9));
+	playerObject = AddPlayerToWorld(Vector3(20 * 8, 5, 20 * 9));
+	playerObject->SetRespawnPoint(Vector3(20 * 8, 5, 20 * 9));
 	playerGroundedCollider = AddSphereToWorld(playerObject->GetTransform().GetPosition(), 1.0f, 0.1f, LAYER_DEFAULT, false, false);
 	playerGroundedCollider->AddToIgnoreList(playerObject);
 	std::cout << "\n" << playerGroundedCollider->GetObjectIgnoreList().size() << "\n";
@@ -506,6 +513,12 @@ void CourseworkGame::GenerateLevel()
 	}
 	AddFloorToWorld(Vector3(levelData->GetGridDimentions().x / 2, -0.25, levelData->GetGridDimentions().y / 2) * nodeSize - Vector3(1 * nodeSize / 2, 0, 1 * nodeSize / 2)
 		, Vector3(levelData->GetGridDimentions().x / 2 * nodeSize, 5, levelData->GetGridDimentions().y * nodeSize / 2));
+
+	outOfBounds[0] = -nodeSize / 2;
+	outOfBounds[1] = -nodeSize / 2;
+
+	outOfBounds[2] = levelData->GetGridDimentions().x * nodeSize + nodeSize / 2;
+	outOfBounds[3] = levelData->GetGridDimentions().y * nodeSize + nodeSize / 2;
 }
 
 /*

@@ -112,7 +112,7 @@ namespace NCL {
 			Controller* playerController = nullptr;
 			Quaternion* playerCameraRotation;
 			LevelData* levelData = nullptr;
-
+			float outOfBounds[4] = {};
 			std::vector<EnemyObject*> enemyObjects = std::vector<EnemyObject*>{};
 		};
 	
