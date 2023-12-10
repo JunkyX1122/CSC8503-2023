@@ -93,6 +93,7 @@ void PhysicsSystem::Update(float dt) {
 	}
 	int iteratorCount = 0;
 	while(dTOffset > realDT) {
+		ResetIsCollidings();
 		IntegrateAccel(realDT); //Update accelerations from external forces
 		
 
@@ -464,6 +465,15 @@ void PhysicsSystem::DrawHitboxes() {
 		}
 	);
 }
+
+void PhysicsSystem::ResetIsCollidings() {
+	gameWorld.OperateOnContents(
+		[](GameObject* o) {
+			o->SetColliding(false);
+
+		}
+	);
+}
 /*
 Once we're finished with a physics update, we have to
 clear out any accumulated forces, ready to receive new
@@ -473,7 +483,7 @@ void PhysicsSystem::ClearForces() {
 	gameWorld.OperateOnContents(
 		[](GameObject* o) {
 			o->GetPhysicsObject()->ClearForces();
-			//o->SetColliding(false);
+			
 		}
 	);
 }

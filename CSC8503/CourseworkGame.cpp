@@ -27,7 +27,8 @@ CourseworkGame::CourseworkGame() : controller(*Window::GetWindow()->GetKeyboard(
 	physics		= new PhysicsSystem(*world);
 
 	forceMagnitude	= 10.0f;
-	useGravity		= false;
+	useGravity		= true;
+	physics->UseGravity(useGravity);
 	inSelectionMode = false;
 	
 	testStateObject = nullptr;
@@ -40,9 +41,18 @@ CourseworkGame::CourseworkGame() : controller(*Window::GetWindow()->GetKeyboard(
 	controller.MapAxis(3, "XLook");
 	controller.MapAxis(4, "YLook");
 
+	//InitialiseAssets();
+}
+void CourseworkGame::InitialiseGame()
+{
+	EraseWorld();
 	InitialiseAssets();
 }
-
+void CourseworkGame::EraseWorld()
+{
+	world->ClearAndErase();
+	physics->Clear();
+}
 /*
 
 Each of the little demo scenarios used in the game uses the same 2 meshes, 
@@ -131,7 +141,7 @@ void CourseworkGame::UpdateGame(float dt) {
 		MovePlayerObject(dt);
 		if (playerObject && playerGroundedCollider)
 		{
-			playerGroundedCollider->GetTransform().SetPosition(playerObject->GetTransform().GetPosition() + Vector3(0, -1.5f, 0));
+			playerGroundedCollider->GetTransform().SetPosition(playerObject->GetTransform().GetPosition() + Vector3(0, -1.75f, 0));
 		}
 	}
 	
@@ -152,7 +162,12 @@ void CourseworkGame::UpdateGame(float dt) {
 
 	Debug::UpdateRenderables(dt);
 }
-
+void CourseworkGame::UpdateOuter(float dt)
+{
+	renderer->Update(dt);
+	renderer->Render();
+	Debug::UpdateRenderables(dt);
+}
 void CourseworkGame::UpdatePathFindings(float dt)
 {
 	for (EnemyObject* enemy : enemyObjects)
@@ -193,7 +208,7 @@ void CourseworkGame::UpdateKeys()
 		useGravity = !useGravity; //Toggle gravity!
 		physics->UseGravity(useGravity);
 	}
-	if (Window::GetKeyboard()->KeyPressed(KeyCodes::P)) {
+	if (Window::GetKeyboard()->KeyPressed(KeyCodes::O)) {
 		inPlayerMode = !inPlayerMode;
 		Window::GetWindow()->ShowOSPointer(!inPlayerMode);
 		Window::GetWindow()->LockMouseToWindow(inPlayerMode);
@@ -392,8 +407,8 @@ void CourseworkGame::MovePlayerObject(float dt)
 		playerObject->GetPhysicsObject()->ApplyLinearImpulse(camQuat*Vector3(0,0,-1) * 128.0f * dt);
 	}
 
-
-	if (Window::GetKeyboard()->KeyPressed(KeyCodes::SPACE) ) {
+	std::cout << playerGroundedCollider->IsColliding() << "\n";
+	if (Window::GetKeyboard()->KeyPressed(KeyCodes::SPACE) && playerGroundedCollider->IsColliding()) {
 		//std::cout << "JUMP\n";
 
 		playerObject->GetPhysicsObject()->ApplyLinearImpulse(Vector3(0, 32.0f, 0) * dt);

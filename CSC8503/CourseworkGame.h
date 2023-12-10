@@ -20,7 +20,10 @@ namespace NCL {
 			CourseworkGame();
 			~CourseworkGame();
 
+			virtual void InitialiseGame();
+			virtual void EraseWorld();
 			virtual void UpdateGame(float dt);
+			virtual void UpdateOuter(float dt);
 
 		protected:
 			void InitialiseAssets();
@@ -53,6 +56,7 @@ namespace NCL {
 			void GenerateLevel();
 			void UpdatePathFindings(float dt);
 
+
 			GameObject* AddFloorToWorld(const Vector3& position, Vector3 dimensions);
 			GameObject* AddSphereToWorld(const Vector3& position, float radius, float inverseMass = 10.0f, int collisionLayer = LAYER_DEFAULT, bool isCollidable = true, bool rendered = true);
 			GameObject* AddCubeToWorld(const Vector3& position, Vector3 dimensions, float inverseMass = 10.0f, int collisionLayer = LAYER_DEFAULT, bool isCollidable = true, bool rendered = true);
@@ -74,7 +78,7 @@ namespace NCL {
 
 			bool useGravity;
 			bool inSelectionMode;
-			bool inPlayerMode = false;
+			bool inPlayerMode = true;
 			float		forceMagnitude;
 
 			GameObject* selectionObject = nullptr;

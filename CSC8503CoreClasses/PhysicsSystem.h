@@ -31,6 +31,7 @@ namespace NCL {
 			void BroadPhase();
 			void NarrowPhase();
 
+			void ResetIsCollidings();
 			void DrawHitboxes();
 			void ClearForces();
 

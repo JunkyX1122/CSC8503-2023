@@ -217,14 +217,11 @@ void TestBehaviourTree()
 
 void TestPushdownAutomata(Window* w)
 {
-	PushdownMachine machine(new IntroScreen());
+	
 	while (w->UpdateWindow()) 
 	{
 		float dt = w->GetTimer().GetTimeDeltaSeconds();
-		if (!machine.Update(dt)) 
-		{
-			return;
-		}
+		
 	}
 }
 
@@ -303,6 +300,8 @@ int main() {
 	if (!w->HasInitialised()) {
 		return -1;
 	}	
+	
+
 	//TestNetworking();
 	//TestBehaviourTree();
 	//TestPushdownAutomata(w);
@@ -311,37 +310,43 @@ int main() {
 	w->LockMouseToWindow(true);
 
 	CourseworkGame* g = new CourseworkGame();
-	TestPathfinding();
-	
+	//TestPathfinding();
+	PushdownMachine machine(new IntroScreen(g));
 
 	bool pausing = false;
 	w->GetTimer().GetTimeDeltaSeconds(); //Clear the timer so we don't get a larget first dt!
-	while (w->UpdateWindow() && !Window::GetKeyboard()->KeyDown(KeyCodes::ESCAPE)) {
+	bool endGame = false;
+	while (w->UpdateWindow() && !Window::GetKeyboard()->KeyDown(KeyCodes::ESCAPE) && !endGame) {
 		float dt = w->GetTimer().GetTimeDeltaSeconds();
-		DisplayPathfinding();
+
 		if (dt > 0.1f) {
 			std::cout << "Skipping large time delta" << std::endl;
-			continue; //must have hit a breakpoint or something to have a 1 second frame time!
 		}
-		if (Window::GetKeyboard()->KeyPressed(KeyCodes::PRIOR)) {
-			w->ShowConsole(true);
-		}
-		if (Window::GetKeyboard()->KeyPressed(KeyCodes::NEXT)) {
-			w->ShowConsole(false);
-		}
-
-		if (Window::GetKeyboard()->KeyPressed(KeyCodes::T)) {
-			w->SetWindowPosition(0, 0);
-		}
-		if (Window::GetKeyboard()->KeyPressed(KeyCodes::F5)) {
-			pausing = !pausing;
-		}
-
-		w->SetTitle("Gametech frame time:" + std::to_string(1000.0f * dt));
-		if (!pausing)
+		else
 		{
-			g->UpdateGame(dt);
+			if (Window::GetKeyboard()->KeyPressed(KeyCodes::PRIOR)) {
+				w->ShowConsole(true);
+			}
+			if (Window::GetKeyboard()->KeyPressed(KeyCodes::NEXT)) {
+				w->ShowConsole(false);
+			}
+
+			if (Window::GetKeyboard()->KeyPressed(KeyCodes::T)) {
+				w->SetWindowPosition(0, 0);
+			}
+
+			w->SetTitle("Gametech frame time:" + std::to_string(1000.0f * dt));
+			//g->UpdateGame(dt);
+			if (!machine.Update(dt))
+			{
+				endGame = true;
+			}
 		}
+		
+		
+		//DisplayPathfinding();
+		
+		
 	}
 	Window::DestroyGameWindow();
 }
