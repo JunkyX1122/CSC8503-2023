@@ -159,7 +159,7 @@ void CourseworkGame::UpdateGame(float dt) {
 
 	UpdatePathFindings(dt);
 	world->UpdateWorld(dt);
-	renderer->Update(dt);
+	//renderer->Update(dt);
 	physics->Update(dt);
 
 	renderer->Render();
