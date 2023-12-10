@@ -217,12 +217,7 @@ void TestBehaviourTree()
 
 void TestPushdownAutomata(Window* w)
 {
-	
-	while (w->UpdateWindow()) 
-	{
-		float dt = w->GetTimer().GetTimeDeltaSeconds();
-		
-	}
+
 }
 
 class TestPacketReceiver : public PacketReceiver
@@ -248,9 +243,58 @@ protected:
 	string name;
 };
 
-void TestNetworking()
+
+
+void TestServer(Window* w)
 {
-	///*
+	NetworkBase::Initialise();
+	TestPacketReceiver serverReceiver("Server");
+	int port = NetworkBase::GetDefaultPort();
+	GameServer* server = new GameServer(port, 1);
+	server->RegisterPacketHandler(String_Message, &serverReceiver);
+	std::cout << "Server Created\n";
+	while (!Window::GetKeyboard()->KeyDown(KeyCodes::ESCAPE) && w->UpdateWindow())
+	{
+		w->SetTitle("Server");
+		if (Window::GetKeyboard()->KeyPressed(KeyCodes::SPACE))
+		{
+			for (int i = 0; i < 100; i++)
+			{
+				StringPacket p("Server says hello! Message 1:" + std::to_string(i));
+				server->SendGlobalPacket(p);
+			}
+		}
+		server->UpdateServer();
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	}
+	NetworkBase::Destroy();
+}
+void TestClient(Window* w)
+{
+	NetworkBase::Initialise();
+	TestPacketReceiver clientReceiver("Client");
+	int port = NetworkBase::GetDefaultPort();
+	GameClient* client = new GameClient();
+	client->RegisterPacketHandler(String_Message, &clientReceiver);
+	bool canConnect = client->Connect(127, 0, 0, 1, port);
+	std::cout << "Client Created\n";
+	while (!Window::GetKeyboard()->KeyDown(KeyCodes::ESCAPE) && w->UpdateWindow())
+	{
+		w->SetTitle("Client");
+		if (Window::GetKeyboard()->KeyDown(KeyCodes::SPACE))
+		{
+			StringPacket p("Client says hello!");
+			client->SendPacket(p);
+		}
+		client->UpdateClient();
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	}
+	delete client;
+	NetworkBase::Destroy();
+}
+void TestNetworking(Window* w)
+{
+	/*
 	NetworkBase::Initialise();
 
 	TestPacketReceiver serverReceiver("Server");
@@ -281,6 +325,27 @@ void TestNetworking()
 	}
 	NetworkBase::Destroy();
 	//*/
+	int selected = 0;
+	w->SetTitle("SELECTION");
+	while (selected == 0 && w->UpdateWindow())
+	{
+		if (Window::GetKeyboard()->KeyPressed(KeyCodes::NUM1))
+		{
+			selected = 1;
+		}
+		if (Window::GetKeyboard()->KeyPressed(KeyCodes::NUM2))
+		{
+			selected = 2;
+		}
+	}
+	if (selected == 1)
+	{
+		TestServer(w);
+	}
+	else
+	{
+		TestClient(w);
+	}
 }
 /*
 
@@ -302,44 +367,51 @@ int main() {
 	}	
 	
 
-	//TestNetworking();
+	//TestNetworking(w);
 	//TestBehaviourTree();
 	//TestPushdownAutomata(w);
 	//TestStateMachine();
 	w->ShowOSPointer(false);
 	w->LockMouseToWindow(true);
 
+
+
+
+
 	CourseworkGame* g = new CourseworkGame();
 	//TestPathfinding();
 	PushdownMachine machine(new IntroScreen(g));
 
-	bool pausing = false;
+	bool game = true;
 	w->GetTimer().GetTimeDeltaSeconds(); //Clear the timer so we don't get a larget first dt!
 	bool endGame = false;
+
 	while (w->UpdateWindow() && !Window::GetKeyboard()->KeyDown(KeyCodes::ESCAPE) && !endGame) {
 		float dt = w->GetTimer().GetTimeDeltaSeconds();
-
-		if (dt > 0.1f) {
-			std::cout << "Skipping large time delta" << std::endl;
-		}
-		else
+		if (game)
 		{
-			if (Window::GetKeyboard()->KeyPressed(KeyCodes::PRIOR)) {
-				w->ShowConsole(true);
+			if (dt > 0.1f) {
+				std::cout << "Skipping large time delta" << std::endl;
 			}
-			if (Window::GetKeyboard()->KeyPressed(KeyCodes::NEXT)) {
-				w->ShowConsole(false);
-			}
-
-			if (Window::GetKeyboard()->KeyPressed(KeyCodes::T)) {
-				w->SetWindowPosition(0, 0);
-			}
-
-			w->SetTitle("Gametech frame time:" + std::to_string(1000.0f * dt));
-			//g->UpdateGame(dt);
-			if (!machine.Update(dt))
+			else
 			{
-				endGame = true;
+				if (Window::GetKeyboard()->KeyPressed(KeyCodes::PRIOR)) {
+					w->ShowConsole(true);
+				}
+				if (Window::GetKeyboard()->KeyPressed(KeyCodes::NEXT)) {
+					w->ShowConsole(false);
+				}
+
+				if (Window::GetKeyboard()->KeyPressed(KeyCodes::T)) {
+					w->SetWindowPosition(0, 0);
+				}
+
+				w->SetTitle("Gametech frame time:" + std::to_string(1000.0f * dt));
+				//g->UpdateGame(dt);
+				if (!machine.Update(dt))
+				{
+					endGame = true;
+				}
 			}
 		}
 		

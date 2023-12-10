@@ -45,8 +45,47 @@ CourseworkGame::CourseworkGame() : controller(*Window::GetWindow()->GetKeyboard(
 }
 void CourseworkGame::InitialiseGame()
 {
+	
+}
+void CourseworkGame::InitialiseGameAsServer()
+{
+
+	std::cout << "Started World As Server\n";
 	EraseWorld();
-	InitialiseAssets();
+	
+	InitWorld();
+
+	NetworkBase::Initialise();
+	int port = NetworkBase::GetDefaultPort();
+	gameServer = new GameServer(port, 1);
+
+}
+void CourseworkGame::InitialiseGameAsClient()
+{
+	EraseWorld();
+	
+	std::cout << "Started World As Client\n";
+	cubeMesh = renderer->LoadMesh("cube.msh");
+	sphereMesh = renderer->LoadMesh("sphere.msh");
+	charMesh = renderer->LoadMesh("goat.msh");
+	enemyMesh = renderer->LoadMesh("Keeper.msh");
+	bonusMesh = renderer->LoadMesh("apple.msh");
+	capsuleMesh = renderer->LoadMesh("capsule.msh");
+
+	basicTex = renderer->LoadTexture("checkerboard.png");
+	basicShader = renderer->LoadShader("scene.vert", "scene.frag");
+	InitWorld();
+	InitCamera();
+	NetworkBase::Initialise();
+	int port = NetworkBase::GetDefaultPort();
+
+	gameClient = new GameClient();
+	gameClient->RegisterPacketHandler(Delta_State, this);
+	gameClient->RegisterPacketHandler(Full_State, this);
+	gameClient->RegisterPacketHandler(Player_Connected, this);
+	gameClient->RegisterPacketHandler(Player_Disconnected, this);
+
+	bool canConnect = gameClient->Connect(127, 0, 0, 1, port);
 }
 void CourseworkGame::EraseWorld()
 {
@@ -60,19 +99,9 @@ and the same texture and shader. There's no need to ever load in anything else
 for this module, even in the coursework, but you can add it if you like!
 
 */
-void CourseworkGame::InitialiseAssets() {
-	cubeMesh	= renderer->LoadMesh("cube.msh");
-	sphereMesh	= renderer->LoadMesh("sphere.msh");
-	charMesh	= renderer->LoadMesh("goat.msh");
-	enemyMesh	= renderer->LoadMesh("Keeper.msh");
-	bonusMesh	= renderer->LoadMesh("apple.msh");
-	capsuleMesh = renderer->LoadMesh("capsule.msh");
+void CourseworkGame::InitialiseAssets() 
+{
 
-	basicTex	= renderer->LoadTexture("checkerboard.png");
-	basicShader = renderer->LoadShader("scene.vert", "scene.frag");
-
-	InitCamera();
-	InitWorld();
 }
 
 CourseworkGame::~CourseworkGame()	{
@@ -90,11 +119,14 @@ CourseworkGame::~CourseworkGame()	{
 	delete world;
 }
 
-void CourseworkGame::UpdateGame(float dt) {
-	
-	if (!inSelectionMode && !inPlayerMode) {
-		world->GetMainCamera().UpdateCamera(dt);
-	}
+void CourseworkGame::UpdateGame(float dt)
+{
+	//UpdateAsServer(dt);
+	//UpdateAsClient(dt);
+}
+
+void CourseworkGame::UpdateAsServer(float dt)
+{
 	
 	if (useGravity) {
 		Debug::Print("(G)ravity on", Vector2(5, 95), Debug::RED);
@@ -102,31 +134,7 @@ void CourseworkGame::UpdateGame(float dt) {
 	else {
 		Debug::Print("(G)ravity off", Vector2(5, 95), Debug::RED);
 	}
-	/*
-	RayCollision closestCollision;
-	
-	if (Window::GetKeyboard()->KeyPressed(KeyCodes::K) && selectionObject) {
-		Vector3 rayPos;
-		Vector3 rayDir;
 
-		rayDir = selectionObject->GetTransform().GetOrientation() * Vector3(0, 0, -1);
-
-		rayPos = selectionObject->GetTransform().GetPosition();
-
-		Ray r = Ray(rayPos, rayDir);
-
-		if (world->Raycast(r, closestCollision, true, selectionObject)) {
-			if (objClosest) {
-				objClosest->GetRenderObject()->SetColour(Vector4(1, 1, 1, 1));
-			}
-			objClosest = (GameObject*)closestCollision.node;
-
-			objClosest->GetRenderObject()->SetColour(Vector4(1, 0, 1, 1));
-		}
-	}
-	*/
-	//Debug::DrawLine(Vector3(), Vector3(0, 100, 0), Vector4(1, 0, 0, 1));
-	
 	if (!inPlayerMode)
 	{
 		SelectObject();
@@ -143,14 +151,15 @@ void CourseworkGame::UpdateGame(float dt) {
 			playerObject->GetTransform().SetPosition(playerObject->GetRespawnPoint());
 			playerObject->GetPhysicsObject()->SetLinearVelocity(Vector3());
 		}
-		AttachCameraPlayer();
+		
 		MovePlayerObject(dt);
+		
 		if (playerObject && playerGroundedCollider)
 		{
 			playerGroundedCollider->GetTransform().SetPosition(playerObject->GetTransform().GetPosition() + Vector3(0, -1.75f, 0));
 		}
 	}
-	
+
 
 	UpdateKeys();
 
@@ -162,11 +171,61 @@ void CourseworkGame::UpdateGame(float dt) {
 	//renderer->Update(dt);
 	physics->Update(dt);
 
+	// Here we need to send the packets to the client. For now, I don't care about the client sending inputs, I just want the objects
+	// to display on the client's screen.
+	BroadcastSnapshot(false);
+	gameServer->UpdateServer();
+	std::this_thread::sleep_for(std::chrono::milliseconds(10));
+}
+
+void CourseworkGame::BroadcastSnapshot(bool deltaFrame) {
+	std::vector<GameObject*>::const_iterator first;
+	std::vector<GameObject*>::const_iterator last;
+
+	world->GetObjectIterators(first, last);
+
+	for (auto i = first; i != last; ++i) {
+		NetworkObject* o = (*i)->GetNetworkObject();
+		if (!o) {
+			continue;
+		}
+		//TODO - you'll need some way of determining
+		//when a player has sent the server an acknowledgement
+		//and store the lastID somewhere. A map between player
+		//and an int could work, or it could be part of a 
+		//NetworkPlayer struct. 
+		int playerState = 0;
+		GamePacket* newPacket = nullptr;
+		if (o->WritePacket(&newPacket, deltaFrame, playerState)) {
+			//std::cout << newPacket->type << "\n";
+			gameServer->SendGlobalPacket(*newPacket);
+			delete newPacket;
+		}
+	}
+}
+void CourseworkGame::UpdateAsClient(float dt)
+{
+	// Here we need to recieve the packets from the server.
+	//world->ClearAndErase();
+	world->GetMainCamera().UpdateCamera(dt);
+
+	gameClient->UpdateClient();
+
+	AttachCameraPlayer();
+	world->UpdateWorld(dt);
+	renderer->Update(dt);
 	renderer->Render();
-
-	
-
 	Debug::UpdateRenderables(dt);
+	//std::this_thread::sleep_for(std::chrono::milliseconds(10));
+}
+void CourseworkGame::ReceivePacket(int type, GamePacket* payload, int source)
+{
+	FullPacket* fullPacket = (FullPacket*)payload;
+	
+	std::cout << payload->type << "\n";
+	playerObject->GetNetworkObject()->ReadPacket((GamePacket&)fullPacket);
+	
+	
 }
 void CourseworkGame::UpdateOuter(float dt)
 {
@@ -630,7 +689,7 @@ PlayerObject* CourseworkGame::AddPlayerToWorld(const Vector3& position) {
 	PlayerObject* character = new PlayerObject();
 	character->SetName("Player");
 	CapsuleVolume* volume  = new CapsuleVolume(meshSize, meshSize, LAYER_PLAYER);
-
+	
 	character->SetBoundingVolume((CollisionVolume*)volume);
 
 	character->GetTransform()
@@ -639,6 +698,7 @@ PlayerObject* CourseworkGame::AddPlayerToWorld(const Vector3& position) {
 
 	character->SetRenderObject(new RenderObject(&character->GetTransform(), charMesh, nullptr, basicShader));
 	character->SetPhysicsObject(new PhysicsObject(&character->GetTransform(), character->GetBoundingVolume()));
+	character->SetNetworkObject(new NetworkObject((GameObject&)character, 300));
 
 	character->GetPhysicsObject()->SetInverseMass(inverseMass);
 	character->GetPhysicsObject()->InitSphereInertia();
@@ -665,15 +725,10 @@ EnemyObject* CourseworkGame::AddEnemyToWorld(const Vector3& position) {
 
 	character->SetRenderObject(new RenderObject(&character->GetTransform(), enemyMesh, nullptr, basicShader));
 	character->SetPhysicsObject(new PhysicsObject(&character->GetTransform(), character->GetBoundingVolume()));
+	//character->SetNetworkObject(new NetworkObject((GameObject&)character, 1000+enemyObjects.size()));
 
 	character->GetPhysicsObject()->SetInverseMass(inverseMass);
 	character->GetPhysicsObject()->InitSphereInertia();
-
-	
-
-
-	
-
 	
 	world->AddGameObject(character);
 

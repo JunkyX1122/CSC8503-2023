@@ -20,7 +20,14 @@ class GameScreen : public PushdownState
 			std::cout << "Returning to main menu!\n";
 			return PushdownResult::Pop;
 		}
-		gameRef->UpdateGame(dt);
+		if (isServer)
+		{
+			gameRef->UpdateAsServer(dt);
+		}
+		else
+		{ 
+			gameRef->UpdateAsClient(dt);
+		}
 		return PushdownResult::NoChange;
 	};
 	void OnAwake() override
@@ -29,14 +36,15 @@ class GameScreen : public PushdownState
 		std::cout << "Preparing to mine bitcoin!\n";
 	}
 public:
-	GameScreen(CourseworkGame* g)
+	GameScreen(CourseworkGame* g, bool b)
 	{
 		gameRef = g;
+		isServer = b;
 	}
 
 protected:
 	int pauseBuffer;
 	float pauseReminder = 1.0f;
 	CourseworkGame* gameRef;
-
+	bool isServer;
 };

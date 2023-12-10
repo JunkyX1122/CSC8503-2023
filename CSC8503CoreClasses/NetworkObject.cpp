@@ -12,10 +12,19 @@ NetworkObject::NetworkObject(GameObject& o, int id) : object(o)	{
 NetworkObject::~NetworkObject()	{
 }
 
-bool NetworkObject::ReadPacket(GamePacket& p) 
+bool NetworkObject::ReadPacket(GamePacket& p)
 {
-	if (p.type == Delta_State) return ReadDeltaPacket((DeltaPacket&)p);
-	if (p.type == Full_State) return ReadFullPacket((FullPacket&)p);
+
+	if (p.type == Delta_State)
+	{
+		std::cout << "dt" << "\n";
+		return ReadDeltaPacket((DeltaPacket&)p);
+	}
+	if (p.type == Full_State)
+	{
+		std::cout << "fp" << "\n";
+		return ReadFullPacket((FullPacket&)p);
+	}
 
 	return false; 
 }
@@ -54,11 +63,16 @@ bool NetworkObject::ReadDeltaPacket(DeltaPacket &p)
 
 bool NetworkObject::ReadFullPacket(FullPacket &p) 
 {
-	if (p.fullState.stateID < lastFullState.stateID) return false;
+	if (p.fullState.stateID < lastFullState.stateID)
+	{
+		return false;
+	}
 	lastFullState = p.fullState;
 
 	object.GetTransform().SetPosition(lastFullState.position);
 	object.GetTransform().SetOrientation(lastFullState.orientation);
+
+	
 
 	stateHistory.emplace_back(lastFullState);
 

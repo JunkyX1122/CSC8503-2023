@@ -11,18 +11,28 @@
 #include "StateMachine.h"
 #include "StateTransition.h"
 #include "State.h"
-
+#include "NetworkObject.h"
+#include "GameServer.h"
+#include "GameClient.h"
 #include <string>
+using std::string;
 namespace NCL {
 	namespace CSC8503 {
-		class CourseworkGame {
+
+
+
+		class CourseworkGame : public PacketReceiver {
 		public:
 			CourseworkGame();
 			~CourseworkGame();
-
+			void ReceivePacket(int type, GamePacket* payload, int source) override;
 			virtual void InitialiseGame();
+			virtual void InitialiseGameAsServer();
+			virtual void InitialiseGameAsClient();
 			virtual void EraseWorld();
 			virtual void UpdateGame(float dt);
+			virtual void UpdateAsServer(float dt);
+			virtual void UpdateAsClient(float dt);
 			virtual void UpdateOuter(float dt);
 
 		protected:
@@ -114,6 +124,17 @@ namespace NCL {
 			LevelData* levelData = nullptr;
 			float outOfBounds[4] = {};
 			std::vector<EnemyObject*> enemyObjects = std::vector<EnemyObject*>{};
+
+
+
+
+
+			// NETWORKING
+
+			GameServer* gameServer = nullptr;
+			GameClient* gameClient = nullptr;
+			void BroadcastSnapshot(bool deltaFrame);
+			//std::vector<GameObject*, int> networkVector;
 		};
 	
 	

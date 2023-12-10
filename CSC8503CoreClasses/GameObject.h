@@ -51,6 +51,10 @@ namespace NCL::CSC8503 {
 		void SetPhysicsObject(PhysicsObject* newObject) {
 			physicsObject = newObject;
 		}
+		void SetNetworkObject(NetworkObject* newObject)
+		{
+			networkObject = newObject;
+		}
 
 		const std::string& GetName() const {
 			return name;

@@ -10,10 +10,16 @@ class IntroScreen : public PushdownState
 	
 	PushdownResult OnUpdate(float dt, PushdownState** newState) override
 	{
-		if (Window::GetKeyboard()->KeyPressed(KeyCodes::SPACE))
+		if (Window::GetKeyboard()->KeyPressed(KeyCodes::NUM1))
+		{	
+			gameRef->InitialiseGameAsServer();
+			*newState = new GameScreen(gameRef, true);
+			return PushdownResult::Push;
+		}
+		if (Window::GetKeyboard()->KeyPressed(KeyCodes::NUM2))
 		{
-			gameRef->InitialiseGame();
-			*newState = new GameScreen(gameRef);
+			gameRef->InitialiseGameAsClient();
+			*newState = new GameScreen(gameRef, false);
 			return PushdownResult::Push;
 		}
 		if (Window::GetKeyboard()->KeyPressed(KeyCodes::ESCAPE)) 
