@@ -56,6 +56,10 @@ bool GameServer::SendGlobalPacket(GamePacket& packet)
 	enet_host_broadcast(netHandle, 0, dataPacket);
 	return true;
 }
+int GameServer::GetPeerCount()
+{
+	return netHandle->peerCount;
+}
 bool GameServer::SendPacketToPeer(GamePacket& packet, int peerID)
 {
 	ENetPacket* dataPacket = enet_packet_create(&packet, packet.GetTotalSize(), 0);

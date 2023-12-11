@@ -361,8 +361,8 @@ hide or show the
 
 */
 int main() {
-	//Window* w = Window::CreateGameWindow("CSC8503 Game technology!", 1280, 720);
-	Window* w = Window::CreateGameWindow("CSC8503 Game technology!", 640, 480);
+	Window* w = Window::CreateGameWindow("CSC8503 Game technology!", 1280, 720);
+	//Window* w = Window::CreateGameWindow("CSC8503 Game technology!", 640, 480);
 
 	if (!w->HasInitialised()) {
 		return -1;
@@ -405,7 +405,7 @@ int main() {
 				}
 
 				if (Window::GetKeyboard()->KeyPressed(KeyCodes::NUM1)) {
-					w->SetWindowPosition(0, 0);
+					w->SetWindowPosition(-1920, 0);
 				}
 				if (Window::GetKeyboard()->KeyPressed(KeyCodes::NUM9)) {
 					w->SetWindowPosition(0, 500);

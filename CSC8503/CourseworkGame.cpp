@@ -79,7 +79,7 @@ void CourseworkGame::InitialiseGameAsServer()
 	NetworkBase::Initialise();
 	int port = NetworkBase::GetDefaultPort();
 	gameServer = new GameServer(port, 4, [&](int peerId) { OnPlayerConnect(peerId); }, [&](int peerId) { OnPlayerDisconnect(peerId); });
-
+	
 	gameServer->RegisterPacketHandler(Received_State, this);
 
 	EraseWorld();
@@ -89,11 +89,12 @@ void CourseworkGame::InitialiseGameAsServer()
 void CourseworkGame::OnPlayerConnect(int peerID)
 {
 	std::cout << "Player ID " << peerID << " has connected!\n";
-	InitialisePlayerAsServer(peerID);
+	numberOfActivePlayers++;
 }
 void CourseworkGame::OnPlayerDisconnect(int peerID)
 {
 	std::cout << "Player ID " << peerID << " has disconnected!\n";
+	numberOfActivePlayers--;
 }
 void CourseworkGame::InitialiseGameAsClient()
 {
@@ -113,18 +114,26 @@ void CourseworkGame::InitialiseGameAsClient()
 	NetworkBase::Initialise();
 	int port = NetworkBase::GetDefaultPort();
 
-	gameClient = new GameClient();
+	gameClient = new GameClient([&](int peerId) { OnOtherPlayerConnect(peerId); }, [&](int peerId) { OnOtherPlayerDisconnect(peerId); });
 	gameClient->RegisterPacketHandler(Delta_State, this);
 	gameClient->RegisterPacketHandler(Full_State, this);
 	gameClient->RegisterPacketHandler(Player_Connected, this);
 	gameClient->RegisterPacketHandler(Player_Disconnected, this);
-
+	gameClient->RegisterPacketHandler(Player_Info, this);
 	bool canConnect = gameClient->Connect(127, 0, 0, 1, port);
 
 
 	EraseWorld();
 	InitWorld();
 	InitCamera();
+}
+void CourseworkGame::OnOtherPlayerConnect(int peerID)
+{
+
+}
+void CourseworkGame::OnOtherPlayerDisconnect(int peerID)
+{
+
 }
 void CourseworkGame::EraseWorld()
 {
@@ -169,18 +178,32 @@ void CourseworkGame::UpdateGame(float dt)
 
 void CourseworkGame::UpdateAsServer(float dt)
 {
+	for (auto pO : playerObject)
+	{
+		GamePacket* newPacket = nullptr;
+
+		PlayerInfoPacket* pp = new PlayerInfoPacket();
+
+		pp->yourAssignedObject = pO.first;
+	
+		newPacket = pp;
+
+		gameServer->SendPacketToPeer(*newPacket, pO.first);
+		delete newPacket;
+		
+	}
 	for (auto pI : playerInputs)
 	{
 		for (int i = 0; i < sizeof(ClientPacket::buttonstates); i++)
 		{
-			pI.second[i] = '0';
-
+			//pI.second[i] = '0';
 		}
 	}
 	for (auto pR : playerRotation)
 	{
-		pR.second = Quaternion::EulerAnglesToQuaternion(0, 0, 0);
+		//pR.second = Quaternion::EulerAnglesToQuaternion(0, 0, 0);
 	}
+	
 	gameServer->UpdateServer();
 	
 	//Window::GetWindow()->ShowOSPointer(true);
@@ -214,11 +237,16 @@ void CourseworkGame::UpdateAsServer(float dt)
 	world->UpdateWorld(dt);
 	//renderer->Update(dt);
 	physics->Update(dt);
-	// renderer->Render();
+	if (true)
+	{
+		//world->GetMainCamera().UpdateCamera(dt);
+		//Debug::UpdateRenderables(dt);
+		//renderer->Render();
+	}
 	// Here we need to send the packets to the client. For now, I don't care about the client sending inputs, I just want the objects
 	// to display on the client's screen.
 	BroadcastSnapshot(false);
-	//Debug::UpdateRenderables(dt);
+	//
 	//std::this_thread::sleep_for(std::chrono::milliseconds(10));
 }
 
@@ -241,17 +269,12 @@ void CourseworkGame::BroadcastSnapshot(bool deltaFrame) {
 
 		int playerState = 0;
 		GamePacket* newPacket = nullptr;
+
 		if (o->WritePacket(&newPacket, deltaFrame, playerState)) 
 		{
-			if ((*i)->GetName() == "Player")
-			{
-				gameServer->SendPacketToPeer(*newPacket, o->GetNetworkID());
-			}
-			else
-			{
-				gameServer->SendGlobalPacket(*newPacket);
-			}
-
+			//std::cout << o->GetNetworkID() << "\n";
+			gameServer->SendGlobalPacket(*newPacket);
+			
 			delete newPacket;
 		}
 	}
@@ -269,8 +292,10 @@ void CourseworkGame::UpdateAsClient(float dt)
 	{
 		gameClient->UpdateClient();
 		ClientSendInputs();
-
-		AttachCameraPlayer(false, playerObject[selfClientID], 0);
+		if (selfClientID >= 0)
+		{
+			AttachCameraPlayer(false, playerObject[selfClientID], selfClientID);
+		}
 		world->UpdateWorld(dt);
 		renderer->Update(dt);
 		renderer->Render();
@@ -365,13 +390,12 @@ void CourseworkGame::ClientSendInputs()
 		newPacket.buttonstates[7] = '2';
 		clientLastStateUpdate = true;
 	}
-	if (clientLastStateUpdate)
-	{
+	
 		newPacket.camPitch = world->GetMainCamera().GetPitch();
 		newPacket.camYaw = world->GetMainCamera().GetYaw();
 		newPacket.lastID = 0;
 		gameClient->SendPacket(newPacket);
-	}
+	
 	
 	
 	
@@ -380,19 +404,41 @@ void CourseworkGame::ReceivePacket(int type, GamePacket* payload, int source)
 {
 	if (gameClient)
 	{
-		playerObject[selfClientID]->GetNetworkObject()->ReadPacket(*payload);
+		if (type == BasicNetworkMessages::Player_Info)
+		{
+			PlayerInfoPacket* infoPacket = (PlayerInfoPacket*)payload;
+			//std::cout << infoPacket->yourAssignedObject << "\n";
+			selfClientID = infoPacket->yourAssignedObject;
+		}
+		else
+		{
+			//std::cout << selfClientID << "\n";
+			if (world->GetAllObjects().size() > 0)
+			{
+				for (GameObject* gb : world->GetAllObjects())
+				{
+					if (gb->GetNetworkObject())
+					{
+						if (gb->GetNetworkObject()->ReadPacket(*payload)) return;
+					}
+				}
+			}
+		}
 	}
 	if (gameServer)
 	{
 		int playerID = source;
 		ClientPacket* clientPacket = (ClientPacket*)payload;
+		//std::cout << "Player ID: " << playerID << "\n";
 		for (int i = 0; i < sizeof(ClientPacket::buttonstates); i++)
 		{
 			playerInputs[playerID][i] = clientPacket->buttonstates[i];
 
-			std::cout << playerInputs[playerID][i] << "\n";
+			//std::cout << playerInputs[playerID][i];
 		}
+		//std::cout << "\n";
 		playerRotation[playerID] = Quaternion::EulerAnglesToQuaternion(clientPacket->camPitch, clientPacket->camYaw, 0);
+		
 	}
 }
 void CourseworkGame::UpdateOuter(float dt)
@@ -561,10 +607,11 @@ void CourseworkGame::AttachCameraPlayer(bool asServer, PlayerObject* pO, int pla
 	Vector3 angles = q.ToEuler(); //nearly there now!
 
 	float dampen = 0.3;
+	
 	world->GetMainCamera().SetPosition(world->GetMainCamera().GetPosition() * (1.0f - dampen) + camPos * dampen);
 	world->GetMainCamera().SetPitch(angles.x);
 	world->GetMainCamera().SetYaw(angles.y);
-
+	
 	
 }
 
@@ -576,7 +623,7 @@ void CourseworkGame::MovePlayerObject(float dt, PlayerObject* pO, int playerID)
 		(Matrix4::Translation(world->GetMainCamera().GetPosition()) * Matrix4(camQuat) * Matrix4::Translation(Vector3(0, 0, -5))).GetPositionVector(),
 		camQuat,
 		0.05f);
-	if (playerInputs[playerID][MOUSE_RIGHT] == IS_PRESSED)
+	if (playerInputs[playerID][MOUSE_RIGHT] == IS_DOWN)
 	{
 
 
@@ -588,8 +635,12 @@ void CourseworkGame::MovePlayerObject(float dt, PlayerObject* pO, int playerID)
 		{
 			//Debug::DrawLine(ray.GetPosition(), closestCollision.collidedAt, Vector4(0, 1, 0, 1), 500.0f);
 			//selectionObject = (GameObject*)closestCollision.node;
-			pO->SetGrapplePoint(closestCollision.collidedAt);
-			pO->SetGrappling(true);
+			if (!pO->IsGrappling())
+			{
+				pO->SetGrapplePoint(closestCollision.collidedAt);
+				pO->SetGrappling(true);
+				Debug::DrawLine(pO->GetGrapplePoint(), pO->GetTransform().GetPosition(), Vector4(0.75, 0, 1, 1));
+			}
 			//selectionObject->GetRenderObject()->SetColour(Vector4(0, 1, 0, 1));
 			//return true;
 		}
@@ -721,7 +772,17 @@ void CourseworkGame::InitWorld() {
 	//playerGroundedCollider->AddToIgnoreList(playerObject);
 	if(gameClient)
 	{ 
-		InitialisePlayerAsClient();
+		for (int i = 0; i < 4; i++)
+		{
+			InitialisePlayerAsClient(i);
+		}
+	}
+	else
+	{
+		for (int i = 0; i < 4; i++)
+		{
+			InitialisePlayerAsServer(i);
+		}
 	}
 	if (true)
 	{
@@ -742,15 +803,14 @@ void CourseworkGame::InitWorld() {
 
 void CourseworkGame::InitialisePlayerAsServer(int playerID)
 {
-	playerObject.insert({ playerID, AddPlayerToWorld(playerID, Vector3(20 * 8, 5, 20 * 9)) });
+	playerObject.insert({ playerID, AddPlayerToWorld(playerID, Vector3(20 * 8 + 15 * playerID, 5, 20 * 9)) });
 	playerObject[playerID]->SetRespawnPoint(Vector3(20 * 8, 5, 20 * 9));
 	playerGroundedCollider.insert({ playerID, AddSphereToWorld(playerObject[playerID]->GetTransform().GetPosition(), 1.0f, 0.1f, LAYER_DEFAULT, false, false) });
 	playerGroundedCollider[playerID]->AddToIgnoreList(playerObject[playerID]);
 }
-void CourseworkGame::InitialisePlayerAsClient()
+void CourseworkGame::InitialisePlayerAsClient(int playerID)
 {
-	int playerID = 0;
-	playerObject.insert({playerID, AddPlayerToWorld(playerID, Vector3(20 * 8, 5, 20 * 9))});
+	playerObject.insert({playerID, AddPlayerToWorld(playerID, Vector3(20 * 8 + 15 * playerID, 5, 20 * 9))});
 	playerObject[playerID]->SetRespawnPoint(Vector3(20 * 8, 5, 20 * 9));
 	playerGroundedCollider.insert({ playerID, AddSphereToWorld(playerObject[playerID]->GetTransform().GetPosition(), 1.0f, 0.1f, LAYER_DEFAULT, false, false)});
 	playerGroundedCollider[playerID]->AddToIgnoreList(playerObject[playerID]);
@@ -915,7 +975,7 @@ EnemyObject* CourseworkGame::AddEnemyToWorld(const Vector3& position) {
 	EnemyObject* character = new EnemyObject(levelData,world, "GenericEnemy");
 	CapsuleVolume* volume = new CapsuleVolume(meshSize, meshSize, LAYER_ENEMY);
 
-	character->SetPlayerObjectTarget(playerObject[0]);
+	character->SetPlayerObjectTarget(playerObject[selfClientID]);
 
 	character->SetBoundingVolume((CollisionVolume*)volume);
 

@@ -14,7 +14,8 @@ enum BasicNetworkMessages {
 	Received_State, //received from a client, informs that its received packet n
 	Player_Connected,
 	Player_Disconnected,
-	Shutdown
+	Shutdown,
+	Player_Info
 };
 
 struct GamePacket {
@@ -72,9 +73,11 @@ public:
 	void RegisterPacketHandler(int msgID, PacketReceiver* receiver) {
 		packetHandlers.insert(std::make_pair(msgID, receiver));
 	}
+
 protected:
 	NetworkBase();
 	~NetworkBase();
+
 	bool ProcessPacket(GamePacket* p, int peerID = -1);
 
 	typedef std::multimap<int, PacketReceiver*>::const_iterator PacketHandlerIterator;

@@ -58,6 +58,8 @@ namespace NCL {
 				return worldStateCounter;
 			}
 
+			std::vector<GameObject*> GetAllObjects() { return gameObjects; }
+
 		protected:
 			std::vector<GameObject*> gameObjects;
 			std::vector<Constraint*> constraints;

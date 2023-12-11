@@ -19,7 +19,7 @@ namespace NCL {
 			bool SendPacketToPeer(GamePacket& packet, int peerID);
 			virtual void UpdateServer();
 			
-
+			int GetPeerCount();
 		protected:
 			int			port;
 			int			clientMax;
@@ -28,8 +28,6 @@ namespace NCL {
 
 			int incomingDataRate;
 			int outgoingDataRate;
-			void* OnPlayerConnect(int peerID);
-			void* OnPlayerDisconnect(int peerID);
 
 			std::function<void(int)> playerConnect;
 			std::function<void(int)> playerDisconnect;

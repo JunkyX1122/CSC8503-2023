@@ -26,7 +26,7 @@ bool NetworkObject::ReadPacket(GamePacket& p)
 		return ReadFullPacket((FullPacket&)p);
 	}
 
-	return false; 
+	return false;
 }
 
 bool NetworkObject::WritePacket(GamePacket** p, bool deltaFrame, int stateID) {
@@ -41,6 +41,7 @@ bool NetworkObject::WritePacket(GamePacket** p, bool deltaFrame, int stateID) {
 bool NetworkObject::ReadDeltaPacket(DeltaPacket &p) 
 {
 	if (p.fullID != lastFullState.stateID) return false;
+	
 	UpdateStateHistory(p.fullID);
 
 	Vector3 fullPos = lastFullState.position;
@@ -67,6 +68,9 @@ bool NetworkObject::ReadFullPacket(FullPacket &p)
 	{
 		return false;
 	}
+
+	if (p.objectID != object.GetNetworkObject()->GetNetworkID()) return false;
+
 	lastFullState = p.fullState;
 	//std::cout << p.fullState.position << "\n";
 	//std::cout << lastFullState.position << "\n";

@@ -49,10 +49,19 @@ namespace NCL::CSC8503 {
 		//7 = RightMouse
 		float camPitch;
 		float camYaw;
-		
+
 		ClientPacket() {
 			type = Received_State;
 			size = sizeof(ClientPacket);
+		}
+	};
+
+	struct PlayerInfoPacket : public GamePacket {
+		int		yourAssignedObject;
+		
+		PlayerInfoPacket() {
+			type = Player_Info;
+			size = sizeof(PlayerInfoPacket);
 		}
 	};
 
@@ -63,6 +72,7 @@ namespace NCL::CSC8503 {
 
 		//Called by clients
 		virtual bool ReadPacket(GamePacket& p);
+
 		//Called by servers
 		virtual bool WritePacket(GamePacket** p, bool deltaFrame, int stateID);
 

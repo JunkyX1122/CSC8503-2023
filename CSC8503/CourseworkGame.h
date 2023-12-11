@@ -136,13 +136,17 @@ namespace NCL {
 			// NETWORKING
 
 			GameServer* gameServer = nullptr;
+			int numberOfActivePlayers = -1;
 			GameClient* gameClient = nullptr;
 			void BroadcastSnapshot(bool deltaFrame);
 			
 			void OnPlayerConnect(int peerID);
 			void OnPlayerDisconnect(int peerID);
+
+			void OnOtherPlayerConnect(int peerID);
+			void OnOtherPlayerDisconnect(int peerID);
 			void InitialisePlayerAsServer(int playerID);
-			void InitialisePlayerAsClient();
+			void InitialisePlayerAsClient(int playerID);
 
 			
 			//std::vector<GameObject*, int> networkVector;

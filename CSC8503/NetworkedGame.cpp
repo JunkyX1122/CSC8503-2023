@@ -39,7 +39,7 @@ void NetworkedGame::StartAsServer() {
 }
 
 void NetworkedGame::StartAsClient(char a, char b, char c, char d) {
-	thisClient = new GameClient();
+	//thisClient = new GameClient();
 	thisClient->Connect(a, b, c, d, NetworkBase::GetDefaultPort());
 
 	thisClient->RegisterPacketHandler(Delta_State, this);
