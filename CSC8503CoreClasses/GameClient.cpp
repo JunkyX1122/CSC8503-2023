@@ -8,9 +8,13 @@ GameClient::GameClient()	{
 }
 
 GameClient::~GameClient()	{
+	enet_peer_disconnect_now(netPeer, 0);
 	enet_host_destroy(netHandle);
 }
-
+void GameClient::Disconnect()
+{
+	enet_peer_disconnect_now(netPeer, 0);
+}
 bool GameClient::Connect(uint8_t a, uint8_t b, uint8_t c, uint8_t d, int portNum) 
 {
 	ENetAddress address;
@@ -34,7 +38,7 @@ void GameClient::UpdateClient()
 		}
 		else if (event.type == ENET_EVENT_TYPE_RECEIVE)
 		{
-			std::cout << "Client: Packet recieved..." << std::endl;
+			//std::cout << "Client: Packet recieved..." << std::endl;
 			GamePacket* packet = (GamePacket*)event.packet->data;
 			ProcessPacket(packet);
 		}

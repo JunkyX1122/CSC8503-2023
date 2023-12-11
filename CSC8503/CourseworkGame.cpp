@@ -14,6 +14,19 @@
 using namespace NCL;
 using namespace CSC8503;
 
+int BUTTON_SPACE = 0;
+int BUTTON_W = 1;
+int BUTTON_A = 2;
+int BUTTON_S = 3;
+int BUTTON_D = 4;
+int BUTTON_F = 5;
+int MOUSE_LEFT = 6;
+int MOUSE_RIGHT = 7;
+
+char IS_UP = '0';
+char IS_PRESSED = '1';
+char IS_DOWN = '2';
+
 CourseworkGame::CourseworkGame() : controller(*Window::GetWindow()->GetKeyboard(), *Window::GetWindow()->GetMouse()) {
 	world		= new GameWorld();
 #ifdef USEVULKAN
@@ -51,18 +64,40 @@ void CourseworkGame::InitialiseGameAsServer()
 {
 
 	std::cout << "Started World As Server\n";
-	EraseWorld();
 	
-	InitWorld();
+	cubeMesh = renderer->LoadMesh("cube.msh");
+	sphereMesh = renderer->LoadMesh("sphere.msh");
+	charMesh = renderer->LoadMesh("goat.msh");
+	enemyMesh = renderer->LoadMesh("Keeper.msh");
+	bonusMesh = renderer->LoadMesh("apple.msh");
+	capsuleMesh = renderer->LoadMesh("capsule.msh");
+
+	basicTex = renderer->LoadTexture("checkerboard.png");
+	basicShader = renderer->LoadShader("scene.vert", "scene.frag");
+	
 
 	NetworkBase::Initialise();
 	int port = NetworkBase::GetDefaultPort();
-	gameServer = new GameServer(port, 1);
+	gameServer = new GameServer(port, 4, [&](int peerId) { OnPlayerConnect(peerId); }, [&](int peerId) { OnPlayerDisconnect(peerId); });
 
+	gameServer->RegisterPacketHandler(Received_State, this);
+
+	EraseWorld();
+	InitWorld();
+}
+
+void CourseworkGame::OnPlayerConnect(int peerID)
+{
+	std::cout << "Player ID " << peerID << " has connected!\n";
+	InitialisePlayerAsServer(peerID);
+}
+void CourseworkGame::OnPlayerDisconnect(int peerID)
+{
+	std::cout << "Player ID " << peerID << " has disconnected!\n";
 }
 void CourseworkGame::InitialiseGameAsClient()
 {
-	EraseWorld();
+	
 	
 	std::cout << "Started World As Client\n";
 	cubeMesh = renderer->LoadMesh("cube.msh");
@@ -74,8 +109,7 @@ void CourseworkGame::InitialiseGameAsClient()
 
 	basicTex = renderer->LoadTexture("checkerboard.png");
 	basicShader = renderer->LoadShader("scene.vert", "scene.frag");
-	InitWorld();
-	InitCamera();
+	
 	NetworkBase::Initialise();
 	int port = NetworkBase::GetDefaultPort();
 
@@ -86,6 +120,11 @@ void CourseworkGame::InitialiseGameAsClient()
 	gameClient->RegisterPacketHandler(Player_Disconnected, this);
 
 	bool canConnect = gameClient->Connect(127, 0, 0, 1, port);
+
+
+	EraseWorld();
+	InitWorld();
+	InitCamera();
 }
 void CourseworkGame::EraseWorld()
 {
@@ -117,6 +156,9 @@ CourseworkGame::~CourseworkGame()	{
 	delete physics;
 	delete renderer;
 	delete world;
+	
+	if (gameClient) delete gameClient;
+	if (gameServer) delete gameServer;
 }
 
 void CourseworkGame::UpdateGame(float dt)
@@ -127,55 +169,57 @@ void CourseworkGame::UpdateGame(float dt)
 
 void CourseworkGame::UpdateAsServer(float dt)
 {
-	
-	if (useGravity) {
-		Debug::Print("(G)ravity on", Vector2(5, 95), Debug::RED);
-	}
-	else {
-		Debug::Print("(G)ravity off", Vector2(5, 95), Debug::RED);
-	}
+	for (auto pI : playerInputs)
+	{
+		for (int i = 0; i < sizeof(ClientPacket::buttonstates); i++)
+		{
+			pI.second[i] = '0';
 
-	if (!inPlayerMode)
-	{
-		SelectObject();
-		MoveSelectedObject();
-	}
-	else
-	{
-		//Window::GetWindow()->ShowOSPointer(true);
-		//Window::GetWindow()->LockMouseToWindow(false);
-		Vector3 playerPos = playerObject->GetTransform().GetPosition();
-		if (playerPos.x < outOfBounds[0] || playerPos.z < outOfBounds[1] ||
-			playerPos.x > outOfBounds[2] || playerPos.z > outOfBounds[3])
-		{
-			playerObject->GetTransform().SetPosition(playerObject->GetRespawnPoint());
-			playerObject->GetPhysicsObject()->SetLinearVelocity(Vector3());
 		}
-		
-		MovePlayerObject(dt);
-		
-		if (playerObject && playerGroundedCollider)
+	}
+	for (auto pR : playerRotation)
+	{
+		pR.second = Quaternion::EulerAnglesToQuaternion(0, 0, 0);
+	}
+	gameServer->UpdateServer();
+	
+	//Window::GetWindow()->ShowOSPointer(true);
+	//Window::GetWindow()->LockMouseToWindow(false);
+	if (playerObject.size() > 0)
+	{
+		for (auto pO : playerObject)
 		{
-			playerGroundedCollider->GetTransform().SetPosition(playerObject->GetTransform().GetPosition() + Vector3(0, -1.75f, 0));
+			int playerID = pO.first;
+			Vector3 playerPos = pO.second->GetTransform().GetPosition();
+			if (playerPos.x < outOfBounds[0] || playerPos.z < outOfBounds[1] ||
+				playerPos.x > outOfBounds[2] || playerPos.z > outOfBounds[3])
+			{
+				pO.second->GetTransform().SetPosition(pO.second->GetRespawnPoint());
+				pO.second->GetPhysicsObject()->SetLinearVelocity(Vector3());
+			}
+			AttachCameraPlayer(true, pO.second, playerID);
+			MovePlayerObject(dt, pO.second, playerID);
+
+			if (pO.second && playerGroundedCollider[playerID])
+			{
+				playerGroundedCollider[playerID]->GetTransform().SetPosition(pO.second->GetTransform().GetPosition() + Vector3(0, -1.75f, 0));
+			}
 		}
 	}
 
 
 	UpdateKeys();
 
-	Vector3 speed = playerObject->GetPhysicsObject()->GetLinearVelocity();
-	//Debug::Print("PlayerSpeed:" + std::to_string(speed.x) + " " + std::to_string(speed.y) + " " + std::to_string(speed.z) + "\n", Vector2(5, 50));
-
 	UpdatePathFindings(dt);
 	world->UpdateWorld(dt);
 	//renderer->Update(dt);
 	physics->Update(dt);
-
+	// renderer->Render();
 	// Here we need to send the packets to the client. For now, I don't care about the client sending inputs, I just want the objects
 	// to display on the client's screen.
 	BroadcastSnapshot(false);
-	gameServer->UpdateServer();
-	std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	//Debug::UpdateRenderables(dt);
+	//std::this_thread::sleep_for(std::chrono::milliseconds(10));
 }
 
 void CourseworkGame::BroadcastSnapshot(bool deltaFrame) {
@@ -194,11 +238,20 @@ void CourseworkGame::BroadcastSnapshot(bool deltaFrame) {
 		//and store the lastID somewhere. A map between player
 		//and an int could work, or it could be part of a 
 		//NetworkPlayer struct. 
+
 		int playerState = 0;
 		GamePacket* newPacket = nullptr;
-		if (o->WritePacket(&newPacket, deltaFrame, playerState)) {
-			//std::cout << newPacket->type << "\n";
-			gameServer->SendGlobalPacket(*newPacket);
+		if (o->WritePacket(&newPacket, deltaFrame, playerState)) 
+		{
+			if ((*i)->GetName() == "Player")
+			{
+				gameServer->SendPacketToPeer(*newPacket, o->GetNetworkID());
+			}
+			else
+			{
+				gameServer->SendGlobalPacket(*newPacket);
+			}
+
 			delete newPacket;
 		}
 	}
@@ -207,25 +260,140 @@ void CourseworkGame::UpdateAsClient(float dt)
 {
 	// Here we need to recieve the packets from the server.
 	//world->ClearAndErase();
-	world->GetMainCamera().UpdateCamera(dt);
+	//world->GetMainCamera().UpdateCamera(dt);
+	if (Window::GetKeyboard()->KeyPressed(KeyCodes::NUM3))
+	{
+		gameClient->Disconnect();
+	}
+	if (gameClient)
+	{
+		gameClient->UpdateClient();
+		ClientSendInputs();
 
-	gameClient->UpdateClient();
-
-	AttachCameraPlayer();
-	world->UpdateWorld(dt);
-	renderer->Update(dt);
-	renderer->Render();
-	Debug::UpdateRenderables(dt);
+		AttachCameraPlayer(false, playerObject[selfClientID], 0);
+		world->UpdateWorld(dt);
+		renderer->Update(dt);
+		renderer->Render();
+		Debug::UpdateRenderables(dt);
+	}
 	//std::this_thread::sleep_for(std::chrono::milliseconds(10));
+}
+void CourseworkGame::ClientSendInputs()
+{
+	ClientPacket newPacket;
+	bool clientLastStateUpdate = false;
+	for (int i = 0; i < sizeof(ClientPacket::buttonstates); i++)
+	{
+		newPacket.buttonstates[i] = '0';
+	}
+	if (Window::GetKeyboard()->KeyPressed(KeyCodes::SPACE)) {
+		newPacket.buttonstates[0] = '1';
+		clientLastStateUpdate = true;
+	}
+	else if (Window::GetKeyboard()->KeyDown(KeyCodes::SPACE))
+	{
+		newPacket.buttonstates[0] = '2';
+		clientLastStateUpdate = true;
+	}
+
+	if (Window::GetKeyboard()->KeyPressed(KeyCodes::W)) {
+		newPacket.buttonstates[1] = '1';
+		clientLastStateUpdate = true;
+	}
+	else if (Window::GetKeyboard()->KeyDown(KeyCodes::W))
+	{
+		newPacket.buttonstates[1] = '2';
+		clientLastStateUpdate = true;
+	}
+
+	if (Window::GetKeyboard()->KeyPressed(KeyCodes::A)) {
+		newPacket.buttonstates[2] = '1';
+		clientLastStateUpdate = true;
+	}
+	else if (Window::GetKeyboard()->KeyDown(KeyCodes::A))
+	{
+		newPacket.buttonstates[2] = '2';
+		clientLastStateUpdate = true;
+	}
+
+	if (Window::GetKeyboard()->KeyPressed(KeyCodes::S)) {
+		newPacket.buttonstates[3] = '1';
+		clientLastStateUpdate = true;
+	}
+	else if (Window::GetKeyboard()->KeyDown(KeyCodes::S))
+	{
+		newPacket.buttonstates[3] = '2';
+		clientLastStateUpdate = true;
+	}
+
+	if (Window::GetKeyboard()->KeyPressed(KeyCodes::D)) {
+		newPacket.buttonstates[4] = '1';
+		clientLastStateUpdate = true;
+	}
+	else if (Window::GetKeyboard()->KeyDown(KeyCodes::D))
+	{
+		newPacket.buttonstates[4] = '2';
+		clientLastStateUpdate = true;
+	}
+
+	if (Window::GetKeyboard()->KeyPressed(KeyCodes::F)) {
+		newPacket.buttonstates[5] = '1';
+		clientLastStateUpdate = true;
+	}
+	else if (Window::GetKeyboard()->KeyDown(KeyCodes::F))
+	{
+		newPacket.buttonstates[5] = '2';
+		clientLastStateUpdate = true;
+	}
+
+	if (Window::GetMouse()->ButtonPressed(NCL::MouseButtons::Left)) {
+		newPacket.buttonstates[6] = '1';
+		clientLastStateUpdate = true;
+	}
+	else if (Window::GetMouse()->ButtonDown(NCL::MouseButtons::Left))
+	{
+		newPacket.buttonstates[6] = '2';
+		clientLastStateUpdate = true;
+	}
+
+	if (Window::GetMouse()->ButtonPressed(NCL::MouseButtons::Right)) {
+		newPacket.buttonstates[7] = '1';
+		clientLastStateUpdate = true;
+	}
+	else if (Window::GetMouse()->ButtonDown(NCL::MouseButtons::Right))
+	{
+		newPacket.buttonstates[7] = '2';
+		clientLastStateUpdate = true;
+	}
+	if (clientLastStateUpdate)
+	{
+		newPacket.camPitch = world->GetMainCamera().GetPitch();
+		newPacket.camYaw = world->GetMainCamera().GetYaw();
+		newPacket.lastID = 0;
+		gameClient->SendPacket(newPacket);
+	}
+	
+	
+	
 }
 void CourseworkGame::ReceivePacket(int type, GamePacket* payload, int source)
 {
-	FullPacket* fullPacket = (FullPacket*)payload;
-	
-	std::cout << payload->type << "\n";
-	playerObject->GetNetworkObject()->ReadPacket((GamePacket&)fullPacket);
-	
-	
+	if (gameClient)
+	{
+		playerObject[selfClientID]->GetNetworkObject()->ReadPacket(*payload);
+	}
+	if (gameServer)
+	{
+		int playerID = source;
+		ClientPacket* clientPacket = (ClientPacket*)payload;
+		for (int i = 0; i < sizeof(ClientPacket::buttonstates); i++)
+		{
+			playerInputs[playerID][i] = clientPacket->buttonstates[i];
+
+			std::cout << playerInputs[playerID][i] << "\n";
+		}
+		playerRotation[playerID] = Quaternion::EulerAnglesToQuaternion(clientPacket->camPitch, clientPacket->camYaw, 0);
+	}
 }
 void CourseworkGame::UpdateOuter(float dt)
 {
@@ -336,41 +504,55 @@ void CourseworkGame::LockedObjectMovement() {
 	}
 }
 
-void CourseworkGame::AttachCameraPlayer()
+void CourseworkGame::AttachCameraPlayer(bool asServer, PlayerObject* pO, int playerID)
 {
 	
-	Vector3 objPos = playerObject->GetTransform().GetPosition();
+	Vector3 objPos = pO->GetTransform().GetPosition();
 
-	Vector3 camOrientation = playerCameraRotation->ToEuler();
+	Vector3 camOrientation = playerCameraRotation[playerID]->ToEuler();
+	
+	//camOrientation = playerObject->GetTransform().GetOrientation().ToEuler();
 	float pitch = camOrientation.x;
 	float yaw = camOrientation.y;
-
-	pitch	-= controller.GetNamedAxis("YLook");
-	yaw -= controller.GetNamedAxis("XLook");
-
-	pitch = std::min(pitch, 89.0f);
-	pitch = std::max(pitch, -89.0f);
-
-	if (yaw < 0) {
-		yaw += 360.0f;
+	if (asServer)
+	{
+		*playerCameraRotation[playerID] = playerRotation[playerID];
 	}
-	if (yaw > 360.0f) {
-		yaw -= 360.0f;
-	}
+	else
+	{
+		float pitch = camOrientation.x;
+		float yaw = camOrientation.y;
 
-	*playerCameraRotation = Quaternion::EulerAnglesToQuaternion(pitch, yaw, camOrientation.z);
+		pitch -= controller.GetNamedAxis("YLook");
+		yaw -= controller.GetNamedAxis("XLook");
+
+		pitch = std::min(pitch, 89.0f);
+		pitch = std::max(pitch, -89.0f);
+
+		if (yaw < 0) {
+			yaw += 360.0f;
+		}
+		if (yaw > 360.0f) {
+			yaw -= 360.0f;
+		}
+		camOrientation.x = pitch;
+		camOrientation.y = yaw;
+		*playerCameraRotation[playerID] = Quaternion::EulerAnglesToQuaternion(pitch, yaw, camOrientation.z);
+	}
+	
 	Vector3 offset(0, 4, 0);
 	Vector3 camPos = (
 		Matrix4::Translation(objPos + offset) *
-		Matrix4(*playerCameraRotation) *
+		Matrix4(*playerCameraRotation[playerID]) *
 		Matrix4::Translation(Vector3(0,0,13))
 		).GetPositionVector();
 
 	Matrix4 temp = Matrix4::BuildViewMatrix(camPos, objPos + offset, Vector3(0, 1, 0));
 
 	Matrix4 modelMat = temp.Inverse();
-
-	playerObject->GetTransform().SetOrientation(Quaternion::EulerAnglesToQuaternion(0,yaw,0));
+	
+	pO->GetTransform().SetOrientation(Quaternion::EulerAnglesToQuaternion(0, camOrientation.y, 0));
+	
 	//*
 
 	
@@ -386,7 +568,7 @@ void CourseworkGame::AttachCameraPlayer()
 	
 }
 
-void CourseworkGame::MovePlayerObject(float dt) 
+void CourseworkGame::MovePlayerObject(float dt, PlayerObject* pO, int playerID) 
 {
 	
 	Quaternion camQuat = Quaternion::EulerAnglesToQuaternion(world->GetMainCamera().GetPitch(), world->GetMainCamera().GetYaw(), 0);
@@ -394,7 +576,7 @@ void CourseworkGame::MovePlayerObject(float dt)
 		(Matrix4::Translation(world->GetMainCamera().GetPosition()) * Matrix4(camQuat) * Matrix4::Translation(Vector3(0, 0, -5))).GetPositionVector(),
 		camQuat,
 		0.05f);
-	if (Window::GetMouse()->ButtonPressed(NCL::MouseButtons::Right)) 
+	if (playerInputs[playerID][MOUSE_RIGHT] == IS_PRESSED)
 	{
 
 
@@ -406,29 +588,29 @@ void CourseworkGame::MovePlayerObject(float dt)
 		{
 			//Debug::DrawLine(ray.GetPosition(), closestCollision.collidedAt, Vector4(0, 1, 0, 1), 500.0f);
 			//selectionObject = (GameObject*)closestCollision.node;
-			playerObject->SetGrapplePoint(closestCollision.collidedAt);
-			playerObject->SetGrappling(true);
+			pO->SetGrapplePoint(closestCollision.collidedAt);
+			pO->SetGrappling(true);
 			//selectionObject->GetRenderObject()->SetColour(Vector4(0, 1, 0, 1));
 			//return true;
 		}
 		else
 		{
-			playerObject->SetGrapplePoint(Vector3(0,0,0));
-			playerObject->SetGrappling(false);
+			pO->SetGrapplePoint(Vector3(0,0,0));
+			pO->SetGrappling(false);
 		}
 
 	}
-	if (!Window::GetMouse()->ButtonDown(NCL::MouseButtons::Right))
+	if (playerInputs[playerID][MOUSE_RIGHT] == IS_UP)
 	{
-		playerObject->SetGrapplePoint(Vector3(0, 0, 0));
-		playerObject->SetGrappling(false);
+		pO->SetGrapplePoint(Vector3(0, 0, 0));
+		pO->SetGrappling(false);
 	}
-	if (playerObject->IsGrappling())
+	if (pO->IsGrappling())
 	{
 		float grappleForce = 1.0f;
-		Debug::DrawLine(playerObject->GetGrapplePoint(), playerObject->GetTransform().GetPosition(), Vector4(0.5f, 0, 1, 1));
-		Vector3 direction = (playerObject->GetGrapplePoint() - playerObject->GetTransform().GetPosition()).Normalised();
-		playerObject->GetPhysicsObject()->AddForce(direction * grappleForce);
+		Debug::DrawLine(pO->GetGrapplePoint(), pO->GetTransform().GetPosition(), Vector4(0.5f, 0, 1, 1));
+		Vector3 direction = (pO->GetGrapplePoint() - pO->GetTransform().GetPosition()).Normalised();
+		pO->GetPhysicsObject()->AddForce(direction * grappleForce);
 	}
 
 	Matrix4 view = world->GetMainCamera().BuildViewMatrix();
@@ -450,35 +632,35 @@ void CourseworkGame::MovePlayerObject(float dt)
 	float spd = 20.0f * dt ;
 
 	Vector3 moveDirection = Vector3(0, 0, 0);
-	if (Window::GetKeyboard()->KeyDown(KeyCodes::W)) {
+	if (playerInputs[playerID][BUTTON_W] == IS_DOWN) {
 		moveDirection = (fwdAxis);
 	}
 
-	if (Window::GetKeyboard()->KeyDown(KeyCodes::S)) {
+	if (playerInputs[playerID][BUTTON_S] == IS_DOWN) {
 		moveDirection = (-fwdAxis);
 	}
 
-	if (Window::GetKeyboard()->KeyDown(KeyCodes::A)) {
+	if (playerInputs[playerID][BUTTON_A] == IS_DOWN) {
 		moveDirection = (-rightAxis);
 	}
 
-	if (Window::GetKeyboard()->KeyDown(KeyCodes::D)) {
+	if (playerInputs[playerID][BUTTON_D] == IS_DOWN) {
 		moveDirection = (rightAxis);
 	}
-	playerObject->GetPhysicsObject()->AddForce(moveDirection * spd);
+	pO->GetPhysicsObject()->AddForce(moveDirection * spd);
 	
-	if (Window::GetKeyboard()->KeyPressed(KeyCodes::F))
+	if (playerInputs[playerID][BUTTON_F] == IS_DOWN)
 	{
-		playerObject->GetPhysicsObject()->ApplyLinearImpulse(camQuat*Vector3(0,0,-1) * 128.0f * dt);
+		pO->GetPhysicsObject()->ApplyLinearImpulse(camQuat*Vector3(0,0,-1) * 128.0f * dt);
 	}
 
 	//std::cout << playerGroundedCollider->IsColliding() << "\n";
-	if (Window::GetKeyboard()->KeyPressed(KeyCodes::SPACE) && playerGroundedCollider->IsColliding()) {
+	if (playerInputs[playerID][BUTTON_SPACE] == IS_PRESSED && playerGroundedCollider[playerID]->IsColliding()) {
 		//std::cout << "JUMP\n";
 
-		playerObject->GetPhysicsObject()->ApplyLinearImpulse(Vector3(0, 32.0f, 0) * dt);
+		pO->GetPhysicsObject()->ApplyLinearImpulse(Vector3(0, 32.0f, 0) * dt);
 	}
-	playerGroundedCollider->GetPhysicsObject()->SetLinearVelocity(playerObject->GetPhysicsObject()->GetLinearVelocity());
+	playerGroundedCollider[playerID]->GetPhysicsObject()->SetLinearVelocity(pO->GetPhysicsObject()->GetLinearVelocity());
 }
 
 void CourseworkGame::DebugObjectMovement() {
@@ -533,17 +715,20 @@ void CourseworkGame::InitWorld() {
 	physics->Clear();
 	
 	enemyObjects.clear();
-	playerObject = AddPlayerToWorld(Vector3(20 * 8, 5, 20 * 9));
-	playerObject->SetRespawnPoint(Vector3(20 * 8, 5, 20 * 9));
-	playerGroundedCollider = AddSphereToWorld(playerObject->GetTransform().GetPosition(), 1.0f, 0.1f, LAYER_DEFAULT, false, false);
-	playerGroundedCollider->AddToIgnoreList(playerObject);
-	std::cout << "\n" << playerGroundedCollider->GetObjectIgnoreList().size() << "\n";
+	//playerObject = AddPlayerToWorld(Vector3(20 * 8, 5, 20 * 9));
+	//playerObject->SetRespawnPoint(Vector3(20 * 8, 5, 20 * 9));
+	//playerGroundedCollider = AddSphereToWorld(playerObject->GetTransform().GetPosition(), 1.0f, 0.1f, LAYER_DEFAULT, false, false);
+	//playerGroundedCollider->AddToIgnoreList(playerObject);
+	if(gameClient)
+	{ 
+		InitialisePlayerAsClient();
+	}
 	if (true)
 	{
 		GenerateLevel();
 		for (int i = 0; i < 5; i++)
 		{
-			enemyObjects.push_back(AddEnemyToWorld(Vector3(18 * 20, 10, (1 + i * 3) * 20)));
+			//enemyObjects.push_back(AddEnemyToWorld(Vector3(18 * 20, 10, (1 + i * 3) * 20)));
 		}
 	}
 	else
@@ -555,6 +740,21 @@ void CourseworkGame::InitWorld() {
 	
 }
 
+void CourseworkGame::InitialisePlayerAsServer(int playerID)
+{
+	playerObject.insert({ playerID, AddPlayerToWorld(playerID, Vector3(20 * 8, 5, 20 * 9)) });
+	playerObject[playerID]->SetRespawnPoint(Vector3(20 * 8, 5, 20 * 9));
+	playerGroundedCollider.insert({ playerID, AddSphereToWorld(playerObject[playerID]->GetTransform().GetPosition(), 1.0f, 0.1f, LAYER_DEFAULT, false, false) });
+	playerGroundedCollider[playerID]->AddToIgnoreList(playerObject[playerID]);
+}
+void CourseworkGame::InitialisePlayerAsClient()
+{
+	int playerID = 0;
+	playerObject.insert({playerID, AddPlayerToWorld(playerID, Vector3(20 * 8, 5, 20 * 9))});
+	playerObject[playerID]->SetRespawnPoint(Vector3(20 * 8, 5, 20 * 9));
+	playerGroundedCollider.insert({ playerID, AddSphereToWorld(playerObject[playerID]->GetTransform().GetPosition(), 1.0f, 0.1f, LAYER_DEFAULT, false, false)});
+	playerGroundedCollider[playerID]->AddToIgnoreList(playerObject[playerID]);
+}
 void CourseworkGame::GenerateLevel()
 {
 	levelData = new LevelData("TestGrid1.txt");
@@ -682,7 +882,7 @@ GameObject* CourseworkGame::AddCapsuleToWorld(const Vector3& position, float hal
 	return capsule;
 }
 
-PlayerObject* CourseworkGame::AddPlayerToWorld(const Vector3& position) {
+PlayerObject* CourseworkGame::AddPlayerToWorld(int playerID, const Vector3& position) {
 	float meshSize		= 2.0f;
 	float inverseMass	= 50.0f;
 
@@ -698,13 +898,13 @@ PlayerObject* CourseworkGame::AddPlayerToWorld(const Vector3& position) {
 
 	character->SetRenderObject(new RenderObject(&character->GetTransform(), charMesh, nullptr, basicShader));
 	character->SetPhysicsObject(new PhysicsObject(&character->GetTransform(), character->GetBoundingVolume()));
-	character->SetNetworkObject(new NetworkObject((GameObject&)character, 300));
+	character->SetNetworkObject(new NetworkObject(*character, playerID));
 
 	character->GetPhysicsObject()->SetInverseMass(inverseMass);
 	character->GetPhysicsObject()->InitSphereInertia();
 	character->GetPhysicsObject()->SetElasticity(0.0f);
 	world->AddGameObject(character);
-	playerCameraRotation = new Quaternion(Vector3(0, 0, 0), 0);
+	playerCameraRotation[playerID] = new Quaternion(Vector3(0, 0, 0), 0);
 	return character;
 }
 
@@ -715,7 +915,7 @@ EnemyObject* CourseworkGame::AddEnemyToWorld(const Vector3& position) {
 	EnemyObject* character = new EnemyObject(levelData,world, "GenericEnemy");
 	CapsuleVolume* volume = new CapsuleVolume(meshSize, meshSize, LAYER_ENEMY);
 
-	character->SetPlayerObjectTarget(playerObject);
+	character->SetPlayerObjectTarget(playerObject[0]);
 
 	character->SetBoundingVolume((CollisionVolume*)volume);
 

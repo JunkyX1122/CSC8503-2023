@@ -75,7 +75,6 @@ public:
 protected:
 	NetworkBase();
 	~NetworkBase();
-
 	bool ProcessPacket(GamePacket* p, int peerID = -1);
 
 	typedef std::multimap<int, PacketReceiver*>::const_iterator PacketHandlerIterator;

@@ -20,7 +20,7 @@ void NetworkBase::Destroy() {
 
 bool NetworkBase::ProcessPacket(GamePacket* packet, int peerID) 
 {
-	PacketHandlerIterator firstHanldler;
+  	PacketHandlerIterator firstHanldler;
 	PacketHandlerIterator lastHandler;
 
 	bool canHandle = GetPacketHandlers(packet->type, firstHanldler, lastHandler);
@@ -35,3 +35,4 @@ bool NetworkBase::ProcessPacket(GamePacket* packet, int peerID)
 	std::cout << __FUNCTION__ << " no handler for packet type " << packet->type << std::endl;
 	return false;
 }
+

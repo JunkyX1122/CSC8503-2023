@@ -26,15 +26,16 @@ namespace NCL {
 			CourseworkGame();
 			~CourseworkGame();
 			void ReceivePacket(int type, GamePacket* payload, int source) override;
+	
 			virtual void InitialiseGame();
-			virtual void InitialiseGameAsServer();
-			virtual void InitialiseGameAsClient();
+			
 			virtual void EraseWorld();
 			virtual void UpdateGame(float dt);
 			virtual void UpdateAsServer(float dt);
 			virtual void UpdateAsClient(float dt);
 			virtual void UpdateOuter(float dt);
-
+			virtual void InitialiseGameAsServer();
+			virtual void InitialiseGameAsClient();
 		protected:
 			void InitialiseAssets();
 
@@ -61,8 +62,9 @@ namespace NCL {
 			void MoveSelectedObject();
 			void DebugObjectMovement();
 			void LockedObjectMovement();
-			void AttachCameraPlayer();
-			void MovePlayerObject(float dt);
+			void ClientSendInputs();
+			void AttachCameraPlayer(bool asServer, PlayerObject* pO, int playerID);
+			void MovePlayerObject(float dt, PlayerObject* pO, int playerID);
 			void GenerateLevel();
 			void UpdatePathFindings(float dt);
 
@@ -72,7 +74,8 @@ namespace NCL {
 			GameObject* AddCubeToWorld(const Vector3& position, Vector3 dimensions, float inverseMass = 10.0f, int collisionLayer = LAYER_DEFAULT, bool isCollidable = true, bool rendered = true);
 			GameObject* AddCapsuleToWorld(const Vector3& position, float halfHeight, float radius, float inverseMass = 10.0f, int collisionLayer = LAYER_DEFAULT, bool isCollidable = true, bool rendered = true);
 
-			PlayerObject* AddPlayerToWorld(const Vector3& position);
+			
+			PlayerObject* AddPlayerToWorld(int playerID, const Vector3& position);
 			EnemyObject* AddEnemyToWorld(const Vector3& position);
 			GameObject* AddBonusToWorld(const Vector3& position);
 
@@ -117,23 +120,31 @@ namespace NCL {
 			StateGameObject* AddStateObjectToWorld(const Vector3& position);
 			StateGameObject* testStateObject;
 
-			PlayerObject* playerObject = nullptr;
-			GameObject* playerGroundedCollider = nullptr;
-			Controller* playerController = nullptr;
-			Quaternion* playerCameraRotation;
+			
+
 			LevelData* levelData = nullptr;
 			float outOfBounds[4] = {};
 			std::vector<EnemyObject*> enemyObjects = std::vector<EnemyObject*>{};
 
 
-
-
-
+			std::map<int, PlayerObject*> playerObject = {};
+			std::map<int, GameObject*> playerGroundedCollider = {};
+			std::map<int, Quaternion*> playerCameraRotation = {};
+			std::map<int, char[8]> playerInputs = {};
+			std::map<int, Quaternion> playerRotation = {};
+			int selfClientID = 0;
 			// NETWORKING
 
 			GameServer* gameServer = nullptr;
 			GameClient* gameClient = nullptr;
 			void BroadcastSnapshot(bool deltaFrame);
+			
+			void OnPlayerConnect(int peerID);
+			void OnPlayerDisconnect(int peerID);
+			void InitialisePlayerAsServer(int playerID);
+			void InitialisePlayerAsClient();
+
+			
 			//std::vector<GameObject*, int> networkVector;
 		};
 	

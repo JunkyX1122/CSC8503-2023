@@ -2,6 +2,14 @@
 #include "GameObject.h"
 #include "NetworkBase.h"
 #include "NetworkState.h"
+//0 = SPACE
+//1 = W
+//2 = A
+//3 = S
+//4 = D
+//5 = F
+//6 = LeftMouse
+//7 = RightMouse
 
 namespace NCL::CSC8503 {
 	class GameObject;
@@ -31,8 +39,19 @@ namespace NCL::CSC8503 {
 	struct ClientPacket : public GamePacket {
 		int		lastID;
 		char	buttonstates[8];
-
+		//0 = SPACE
+		//1 = W
+		//2 = A
+		//3 = S
+		//4 = D
+		//5 = F
+		//6 = LeftMouse
+		//7 = RightMouse
+		float camPitch;
+		float camYaw;
+		
 		ClientPacket() {
+			type = Received_State;
 			size = sizeof(ClientPacket);
 		}
 	};
@@ -48,7 +67,7 @@ namespace NCL::CSC8503 {
 		virtual bool WritePacket(GamePacket** p, bool deltaFrame, int stateID);
 
 		void UpdateStateHistory(int minID);
-
+		int GetNetworkID() { return networkID; }
 	protected:
 
 		NetworkState& GetLatestNetworkState();

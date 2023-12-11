@@ -31,7 +31,7 @@ NetworkedGame::~NetworkedGame()	{
 }
 
 void NetworkedGame::StartAsServer() {
-	thisServer = new GameServer(NetworkBase::GetDefaultPort(), 4);
+	//thisServer = new GameServer(NetworkBase::GetDefaultPort(), 4);
 
 	thisServer->RegisterPacketHandler(Received_State, this);
 
@@ -91,6 +91,8 @@ void NetworkedGame::UpdateAsClient(float dt) {
 		newPacket.buttonstates[0] = 1;
 		newPacket.lastID = 0; //You'll need to work this out somehow...
 	}
+	//newPacket.camPitch = world->GetMainCamera().GetPitch();
+	//newPacket.camPitch = world->GetMainCamera().GetYaw();
 	thisClient->SendPacket(newPacket);
 }
 

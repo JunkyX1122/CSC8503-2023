@@ -219,7 +219,7 @@ void TestPushdownAutomata(Window* w)
 {
 
 }
-
+/*
 class TestPacketReceiver : public PacketReceiver
 {
 public:
@@ -292,6 +292,7 @@ void TestClient(Window* w)
 	delete client;
 	NetworkBase::Destroy();
 }
+*/
 void TestNetworking(Window* w)
 {
 	/*
@@ -340,11 +341,11 @@ void TestNetworking(Window* w)
 	}
 	if (selected == 1)
 	{
-		TestServer(w);
+		//TestServer(w);
 	}
 	else
 	{
-		TestClient(w);
+		//TestClient(w);
 	}
 }
 /*
@@ -360,7 +361,8 @@ hide or show the
 
 */
 int main() {
-	Window*w = Window::CreateGameWindow("CSC8503 Game technology!", 1280, 720);
+	//Window* w = Window::CreateGameWindow("CSC8503 Game technology!", 1280, 720);
+	Window* w = Window::CreateGameWindow("CSC8503 Game technology!", 640, 480);
 
 	if (!w->HasInitialised()) {
 		return -1;
@@ -402,8 +404,14 @@ int main() {
 					w->ShowConsole(false);
 				}
 
-				if (Window::GetKeyboard()->KeyPressed(KeyCodes::T)) {
+				if (Window::GetKeyboard()->KeyPressed(KeyCodes::NUM1)) {
 					w->SetWindowPosition(0, 0);
+				}
+				if (Window::GetKeyboard()->KeyPressed(KeyCodes::NUM9)) {
+					w->SetWindowPosition(0, 500);
+				}
+				if (Window::GetKeyboard()->KeyPressed(KeyCodes::NUM0)) {
+					w->SetWindowPosition(640, 500);
 				}
 
 				w->SetTitle("Gametech frame time:" + std::to_string(1000.0f * dt));

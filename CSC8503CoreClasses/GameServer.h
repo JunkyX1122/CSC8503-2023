@@ -6,7 +6,7 @@ namespace NCL {
 		class GameWorld;
 		class GameServer : public NetworkBase {
 		public:
-			GameServer(int onPort, int maxClients);
+			GameServer(int onPort, int maxClients, std::function<void(int)> onPlayerConnect, std::function<void(int)> onPlayerDisconnect);
 			~GameServer();
 
 			bool Initialise();
@@ -16,8 +16,9 @@ namespace NCL {
 
 			bool SendGlobalPacket(int msgID);
 			bool SendGlobalPacket(GamePacket& packet);
-
+			bool SendPacketToPeer(GamePacket& packet, int peerID);
 			virtual void UpdateServer();
+			
 
 		protected:
 			int			port;
@@ -27,6 +28,11 @@ namespace NCL {
 
 			int incomingDataRate;
 			int outgoingDataRate;
+			void* OnPlayerConnect(int peerID);
+			void* OnPlayerDisconnect(int peerID);
+
+			std::function<void(int)> playerConnect;
+			std::function<void(int)> playerDisconnect;
 		};
 	}
 }

@@ -4,11 +4,16 @@
 using namespace NCL;
 using namespace CSC8503;
 
-GameServer::GameServer(int onPort, int maxClients)	{
+GameServer::GameServer(int onPort, int maxClients, std::function<void(int)> onPlayerConnect, std::function<void(int)> onPlayerDisconnect)	{
 	port		= onPort;
 	clientMax	= maxClients;
 	clientCount = 0;
 	netHandle	= nullptr;
+
+
+	playerConnect = onPlayerConnect;
+	playerDisconnect = onPlayerDisconnect;
+
 	Initialise();
 }
 
@@ -51,7 +56,13 @@ bool GameServer::SendGlobalPacket(GamePacket& packet)
 	enet_host_broadcast(netHandle, 0, dataPacket);
 	return true;
 }
-
+bool GameServer::SendPacketToPeer(GamePacket& packet, int peerID)
+{
+	ENetPacket* dataPacket = enet_packet_create(&packet, packet.GetTotalSize(), 0);
+	ENetPeer* peerToSend = &netHandle->peers[peerID];
+	enet_peer_send(peerToSend, 0, dataPacket);
+	return true;
+}
 void GameServer::UpdateServer() 
 {
 	if (!netHandle) return;
@@ -61,17 +72,22 @@ void GameServer::UpdateServer()
 		int type = event.type;
 		ENetPeer* p = event.peer;
 		int peer = p->incomingPeerID;
-
+		//std::cout << type << "\n";
 		if (type == ENetEventType::ENET_EVENT_TYPE_CONNECT)
 		{
 			std::cout << "Server: New client connected" << std::endl;
+			playerConnect(peer);
+
 		}
 		else if (type == ENetEventType::ENET_EVENT_TYPE_DISCONNECT)
 		{
 			std::cout << "Server: A client has disconnected" << std::endl;
+			playerDisconnect(peer);
+	
 		}
 		else if (type == ENetEventType::ENET_EVENT_TYPE_RECEIVE)
 		{
+			//std::cout << "Server: Input packet recieved..." << std::endl;
 			GamePacket* packet = (GamePacket*)event.packet->data;
 			ProcessPacket(packet, peer);
 		}
