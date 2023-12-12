@@ -10,23 +10,48 @@ class IntroScreen : public PushdownState
 	
 	PushdownResult OnUpdate(float dt, PushdownState** newState) override
 	{
-		if (Window::GetKeyboard()->KeyPressed(KeyCodes::NUM1))
-		{	
-			gameRef->InitialiseGameAsServer();
-			*newState = new GameScreen(gameRef, true);
-			return PushdownResult::Push;
-		}
-		if (Window::GetKeyboard()->KeyPressed(KeyCodes::NUM2))
+ 		Debug::Print("SOMETHING ABOUT CSC8503 COURSEWORK", Vector2(5, 5), Vector4(1, 1, 1, 1));
+		for (int i = 0; i < options.size(); i++)
 		{
-			gameRef->InitialiseGameAsClient();
-			*newState = new GameScreen(gameRef, false);
-			return PushdownResult::Push;
+			bool selected = selectedOption == i;
+			Debug::Print((selected ? "> " : "") + options[i], Vector2(5, 15 + 5 * i), selected ? colors[i] : Vector4(0.2, 0.2, 0.2, 1));
 		}
-		if (Window::GetKeyboard()->KeyPressed(KeyCodes::ESCAPE)) 
+		if (Window::GetKeyboard()->KeyPressed(KeyCodes::UP))
 		{
-			return PushdownResult::Pop;
+			selectedOption--;
+			if (selectedOption < 0) selectedOption = options.size() - 1;
 		}
-		Debug::Print("MAIN MENU", Vector2(5, 85), Vector4(1,1,1,1));
+		if (Window::GetKeyboard()->KeyPressed(KeyCodes::DOWN))
+		{
+			selectedOption = (selectedOption + 1) % options.size();
+		}
+		
+		if (Window::GetKeyboard()->KeyPressed(KeyCodes::SPACE))
+		{
+			switch (selectedOption)
+			{
+			case(0):
+				passedTag = "Start Server";
+				windowRef->SetWindowPosition(-1920, 0);
+				gameRef->InitialiseGameAsServer();
+				*newState = new GameScreen(gameRef, true);
+				return PushdownResult::Push;
+				break;
+			case(1):
+
+				passedTag = "Start Client";
+				windowRef->SetWindowPosition(0, 0);
+				gameRef->InitialiseGameAsClient();
+				*newState = new GameScreen(gameRef, false);
+				return PushdownResult::Push;
+				break;
+			case(3):
+				return PushdownResult::Pop;
+				break;
+			}
+		}
+	
+		
 
 		gameRef->UpdateOuter(dt);
 		return PushdownResult::NoChange;
@@ -36,17 +61,43 @@ class IntroScreen : public PushdownState
 	{
 		gameRef->EraseWorld();
 		std::cout << "Welcome to game\n";
+		if (passedTag == "Failed Connection")
+		{
+			failedToConnect = true;
+			options[1] = "Join Server (Connection Failed)";
+			colors[1] = Vector4(1, 0, 0, 1);
+		}
+		
 	}
 	void OnSleep() override
 	{
 	}
 
 public:
-	IntroScreen(CourseworkGame* g)
+	IntroScreen(CourseworkGame* g, Window* w)
 	{
 		gameRef = g;
+		windowRef = w;
 	}
 
 protected:
 	CourseworkGame* gameRef;
+	Window* windowRef;
+	int selectedOption = 0;
+	bool failedToConnect = false;
+	std::vector<std::string> options = 
+	{
+		"Start Game As Server",
+		"Join Server",
+		"Credits or something",
+		"LEAVE"
+	};
+	std::vector<Vector4> colors =
+	{
+		Vector4(0,1,0,1),
+		Vector4(0,1,0,1),
+		Vector4(0,1,0,1),
+		Vector4(0,1,0,1)
+	};
+	
 };

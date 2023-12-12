@@ -72,9 +72,9 @@ namespace NCL {
 			{
 				return stateMachine;
 			}
-			void SetPlayerObjectTarget(GameObject* o)
+			void SetObjectTarget(GameObject* o)
 			{
-				playerObject = o;
+				targetObject = o;
 			}
 
 			void MoveAlongPath(float dt);
@@ -94,11 +94,18 @@ namespace NCL {
 				moveSpeed = f;
 			}
 
+			void SetTargetableObjects(vector<GameObject*> v)
+			{
+				playerObjects = v;
+			}
 		protected:
 			std::string navigationGridFile;
 			Vector3 targetDestination;
 			vector<Vector3> pathFindingNodes;
-			GameObject* playerObject;
+			vector<GameObject*> playerObjects;
+			GameObject* closestPlayerObject;
+			GameObject* targetObject;
+
 			LevelData* levelData = nullptr;
 			bool isSearchingForSpot = true;
 			GameWorld* gameWorld;

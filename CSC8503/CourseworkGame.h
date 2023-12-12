@@ -36,6 +36,9 @@ namespace NCL {
 			virtual void UpdateOuter(float dt);
 			virtual void InitialiseGameAsServer();
 			virtual void InitialiseGameAsClient();
+			virtual void DisconnectAsServer();
+			virtual void DisconnectAsClient();
+			bool connected = true;
 		protected:
 			void InitialiseAssets();
 
@@ -101,6 +104,7 @@ namespace NCL {
 			Mesh*	sphereMesh	= nullptr;
 
 			Texture*	basicTex	= nullptr;
+			Texture*	groundTex   = nullptr;
 			Shader*		basicShader = nullptr;
 
 			//Coursework Meshes
@@ -141,6 +145,7 @@ namespace NCL {
 			int numberOfActivePlayers = -1;
 			int activePlayers[4] = { 0,0,0,0 };
 			GameClient* gameClient = nullptr;
+			float clientConnectionTimer = 3.0f;
 			void BroadcastSnapshot(bool deltaFrame);
 			
 			void OnPlayerConnect(int peerID);
@@ -150,7 +155,7 @@ namespace NCL {
 			void OnOtherPlayerDisconnect(int peerID);
 			void InitialisePlayerAsServer(int playerID);
 			void InitialisePlayerAsClient(int playerID);
-
+	
 			
 			//std::vector<GameObject*, int> networkVector;
 		};

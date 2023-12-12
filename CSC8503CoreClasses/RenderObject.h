@@ -44,12 +44,15 @@ namespace NCL {
 				return colour;
 			}
 
+			void SetTextureScale(Vector3 v) { textureScale = v; }
+			Vector3 GetTextureScale() { return textureScale; }
 		protected:
 			Mesh*		mesh;
 			Texture*	texture;
 			Shader*		shader;
 			Transform*	transform;
 			Vector4		colour;
+			Vector3		textureScale = Vector3(1,1,1);
 		};
 	}
 }

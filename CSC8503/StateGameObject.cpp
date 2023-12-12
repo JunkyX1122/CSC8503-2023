@@ -81,9 +81,9 @@ EnemyObject::EnemyObject(LevelData* l, GameWorld* g, const std::string& n)
 		});
 	State* ChasePlayer = new State([&](float dt)->void
 		{
-			if (playerObject)
+			if (targetObject)
 			{
-				Vector3 target = playerObject->GetTransform().GetPosition();
+				Vector3 target = targetObject->GetTransform().GetPosition();
 				target.y = 0;
 				this->SetMoveSpeed(6.0f * 2);
 				this->SetTargetDestination(target);
@@ -152,23 +152,41 @@ void EnemyObject::MoveAlongPath(float dt)
 
 bool EnemyObject::CanSeePlayer()
 {
-	if (playerObject)
+	if (playerObjects.size() > 0)
 	{
-		Ray ray(this->GetTransform().GetPosition(), (playerObject->GetTransform().GetPosition() - this->GetTransform().GetPosition()).Normalised());
-
-		RayCollision closestCollision;
-		std::vector<int> ignoreList = { LAYER_ENEMY };
-		if (gameWorld->Raycast(ray, closestCollision, true, nullptr, ignoreList))
+		vector<GameObject*> visiblePlayers;
+		for (auto pO : playerObjects)
 		{
-			GameObject* selectionObject = (GameObject*)closestCollision.node;
-			//Debug::DrawLine(this->GetTransform().GetPosition(), playerObject->GetTransform().GetPosition(), Vector4(1, 0, 0, 0.1f));
-			Debug::DrawLine(this->GetTransform().GetPosition(), closestCollision.collidedAt, Vector4(0, 1, 0, 0.1f));
-			if (selectionObject->GetBoundingVolume()->collisionLayer == LAYER_PLAYER)
+			Ray ray(this->GetTransform().GetPosition(), (pO->GetTransform().GetPosition() - this->GetTransform().GetPosition()).Normalised());
+
+			RayCollision closestCollision;
+			std::vector<int> ignoreList = { LAYER_ENEMY };
+			if (gameWorld->Raycast(ray, closestCollision, true, nullptr, ignoreList))
 			{
-				//std::cout << "can\n";
-				return true;
+				GameObject* selectionObject = (GameObject*)closestCollision.node;
+				//Debug::DrawLine(this->GetTransform().GetPosition(), playerObject->GetTransform().GetPosition(), Vector4(1, 0, 0, 0.1f));
+				Debug::DrawLine(this->GetTransform().GetPosition(), closestCollision.collidedAt, Vector4(0, 1, 0, 0.1f));
+				if (selectionObject->GetBoundingVolume()->collisionLayer == LAYER_PLAYER)
+				{
+					//std::cout << "can\n";
+					//return true;
+					visiblePlayers.push_back(pO);
+				}
 			}
 		}
+		float range = 10000.0f;
+		bool canSeePlayer = false;
+		for (auto vPO : visiblePlayers)
+		{
+			float rangeFromVPO = (this->GetTransform().GetPosition() - vPO->GetTransform().GetPosition()).Length();
+			if (rangeFromVPO < range)
+			{
+				canSeePlayer = true;
+				this->SetObjectTarget(vPO);
+				range = rangeFromVPO;
+			}
+		}
+		return canSeePlayer;
 	}
 	//std::cout << "can't\n";
 	return false;

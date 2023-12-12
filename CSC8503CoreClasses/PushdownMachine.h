@@ -15,7 +15,7 @@ namespace NCL {
 		protected:
 			PushdownState* activeState;
 			PushdownState* initialState;
-
+			std::string notification = "";
 			std::stack<PushdownState*> stateStack;
 		};
 	}

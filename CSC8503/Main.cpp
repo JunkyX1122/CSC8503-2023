@@ -382,7 +382,7 @@ int main() {
 
 	CourseworkGame* g = new CourseworkGame();
 	//TestPathfinding();
-	PushdownMachine machine(new IntroScreen(g));
+	PushdownMachine machine(new IntroScreen(g, w));
 
 	bool game = true;
 	w->GetTimer().GetTimeDeltaSeconds(); //Clear the timer so we don't get a larget first dt!
@@ -395,38 +395,35 @@ int main() {
 			if (dt > 0.1f) {
 				std::cout << "Skipping large time delta" << std::endl;
 			}
-			else
-			{
-				if (Window::GetKeyboard()->KeyPressed(KeyCodes::PRIOR)) {
-					w->ShowConsole(true);
-				}
-				if (Window::GetKeyboard()->KeyPressed(KeyCodes::NEXT)) {
-					w->ShowConsole(false);
-				}
-
-				if (Window::GetKeyboard()->KeyPressed(KeyCodes::NUM1)) {
-					w->SetWindowPosition(-1920, 0);
-				}
-				if (Window::GetKeyboard()->KeyPressed(KeyCodes::NUM9)) {
-					w->SetWindowPosition(0, 500);
-				}
-				if (Window::GetKeyboard()->KeyPressed(KeyCodes::NUM0)) {
-					w->SetWindowPosition(640, 500);
-				}
-
-				w->SetTitle("Gametech frame time:" + std::to_string(1000.0f * dt));
-				//g->UpdateGame(dt);
-				if (!machine.Update(dt))
-				{
-					endGame = true;
-				}
+			
+			if (Window::GetKeyboard()->KeyPressed(KeyCodes::PRIOR)) {
+				w->ShowConsole(true);
 			}
+			if (Window::GetKeyboard()->KeyPressed(KeyCodes::NEXT)) {
+				w->ShowConsole(false);
+			}
+
+			if (Window::GetKeyboard()->KeyPressed(KeyCodes::NUM1)) {
+					
+			}
+			if (Window::GetKeyboard()->KeyPressed(KeyCodes::NUM9)) {
+				w->SetWindowPosition(0, 500);
+			}
+			if (Window::GetKeyboard()->KeyPressed(KeyCodes::NUM0)) {
+				w->SetWindowPosition(640, 500);
+			}
+
+			w->SetTitle("Gametech frame time:" + std::to_string(1000.0f * dt));
+			//g->UpdateGame(dt);
+			if (!machine.Update(dt))
+			{
+				endGame = true;
+			}
+			
 		}
 		
-		
-		//DisplayPathfinding();
-		
-		
 	}
+	g->DisconnectAsClient();
+	g->DisconnectAsServer();
 	Window::DestroyGameWindow();
 }

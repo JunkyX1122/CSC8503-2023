@@ -27,6 +27,8 @@ char IS_UP = '0';
 char IS_PRESSED = '1';
 char IS_DOWN = '2';
 
+float SERVER_CONNECTION_TIMELIMIT = 0.5f;
+float CONNECTION_TIMEOUT = 5.0f;
 CourseworkGame::CourseworkGame() : controller(*Window::GetWindow()->GetKeyboard(), *Window::GetWindow()->GetMouse()) {
 	world		= new GameWorld();
 #ifdef USEVULKAN
@@ -62,18 +64,9 @@ void CourseworkGame::InitialiseGame()
 }
 void CourseworkGame::InitialiseGameAsServer()
 {
-
 	std::cout << "Started World As Server\n";
+	InitialiseAssets();
 	
-	cubeMesh = renderer->LoadMesh("cube.msh");
-	sphereMesh = renderer->LoadMesh("sphere.msh");
-	charMesh = renderer->LoadMesh("goat.msh");
-	enemyMesh = renderer->LoadMesh("Keeper.msh");
-	bonusMesh = renderer->LoadMesh("apple.msh");
-	capsuleMesh = renderer->LoadMesh("capsule.msh");
-
-	basicTex = renderer->LoadTexture("checkerboard.png");
-	basicShader = renderer->LoadShader("scene.vert", "scene.frag");
 	world->GetMainCamera().SetPosition(Vector3(20 * 8, 10, 20 * 9));
 
 	NetworkBase::Initialise();
@@ -96,21 +89,11 @@ void CourseworkGame::OnPlayerDisconnect(int peerID)
 	std::cout << "Player ID " << peerID << " has disconnected!\n";
 	activePlayers[peerID] = 0;
 }
+
 void CourseworkGame::InitialiseGameAsClient()
 {
-	
-	
 	std::cout << "Started World As Client\n";
-	cubeMesh = renderer->LoadMesh("cube.msh");
-	sphereMesh = renderer->LoadMesh("sphere.msh");
-	charMesh = renderer->LoadMesh("goat.msh");
-	enemyMesh = renderer->LoadMesh("Keeper.msh");
-	bonusMesh = renderer->LoadMesh("apple.msh");
-	capsuleMesh = renderer->LoadMesh("capsule.msh");
-
-	basicTex = renderer->LoadTexture("checkerboard.png");
-	basicShader = renderer->LoadShader("scene.vert", "scene.frag");
-	
+	InitialiseAssets();
 	NetworkBase::Initialise();
 	int port = NetworkBase::GetDefaultPort();
 
@@ -121,8 +104,8 @@ void CourseworkGame::InitialiseGameAsClient()
 	gameClient->RegisterPacketHandler(Player_Disconnected, this);
 	gameClient->RegisterPacketHandler(Player_Info, this);
 	bool canConnect = gameClient->Connect(127, 0, 0, 1, port);
-
-
+	connected = canConnect;
+	clientConnectionTimer = SERVER_CONNECTION_TIMELIMIT;
 	EraseWorld();
 	InitWorld();
 	InitCamera();
@@ -135,10 +118,33 @@ void CourseworkGame::OnOtherPlayerDisconnect(int peerID)
 {
 
 }
+
+void CourseworkGame::DisconnectAsServer()
+{
+	EraseWorld();
+	gameServer->Shutdown();
+	gameServer->Destroy();
+	//delete gameServer;
+}
+void CourseworkGame::DisconnectAsClient()
+{
+	EraseWorld();
+	gameClient->Disconnect();
+	gameClient->Destroy();
+	//delete gameClient;
+}
+
 void CourseworkGame::EraseWorld()
 {
 	world->ClearAndErase();
 	physics->Clear();
+	playerObject.clear();
+	playerGroundedCollider.clear();
+	playerCameraPosition.clear();
+	playerCameraRotation.clear();
+	playerInputs.clear();
+	playerRotation.clear();
+	playerCameraOffsetPosition.clear();
 }
 /*
 
@@ -149,7 +155,16 @@ for this module, even in the coursework, but you can add it if you like!
 */
 void CourseworkGame::InitialiseAssets() 
 {
+	cubeMesh = renderer->LoadMesh("cube.msh");
+	sphereMesh = renderer->LoadMesh("sphere.msh");
+	charMesh = renderer->LoadMesh("goat.msh");
+	enemyMesh = renderer->LoadMesh("Keeper.msh");
+	bonusMesh = renderer->LoadMesh("apple.msh");
+	capsuleMesh = renderer->LoadMesh("capsule.msh");
 
+	basicTex = renderer->LoadTexture("checkerboard.png");
+	groundTex = renderer->LoadTexture("Dirty_Grass_DIFF.png");
+	basicShader = renderer->LoadShader("scene.vert", "scene.frag");
 }
 
 CourseworkGame::~CourseworkGame()	{
@@ -239,8 +254,6 @@ void CourseworkGame::UpdateAsServer(float dt)
 	physics->Update(dt);
 	if (true)
 	{
-		
-		
 		renderer->Render();
 		Debug::UpdateRenderables(dt);
 	}
@@ -285,12 +298,15 @@ void CourseworkGame::UpdateAsClient(float dt)
 	// Here we need to recieve the packets from the server.
 	//world->ClearAndErase();
 	//world->GetMainCamera().UpdateCamera(dt);
-	if (Window::GetKeyboard()->KeyPressed(KeyCodes::BACK))
-	{
-		gameClient->Disconnect();
-	}
+	
 	if (gameClient)
 	{
+		if (clientConnectionTimer <= 0) 
+		{
+			connected = false;
+			return;
+		}
+		clientConnectionTimer -= dt;
 		world->ResetObjectNetworkUpdateList();
 		gameClient->UpdateClient();
 		for (GameObject* objects : world->GetToUpdateList())
@@ -415,6 +431,7 @@ void CourseworkGame::ReceivePacket(int type, GamePacket* payload, int source)
 			PlayerInfoPacket* infoPacket = (PlayerInfoPacket*)payload;
 			//std::cout << infoPacket->yourAssignedObject << "\n";
 			selfClientID = infoPacket->yourAssignedObject;
+			clientConnectionTimer = CONNECTION_TIMEOUT;
 		}
 		else
 		{
@@ -460,24 +477,7 @@ void CourseworkGame::UpdatePathFindings(float dt)
 {
 	for (EnemyObject* enemy : enemyObjects)
 	{
-
 		if(enemy->GetStateMachine()) enemy->GetStateMachine()->Update(dt);
-		/*
-		if (enemy->IsNavigationSet())
-		{
-			Vector3 target = playerObject->GetTransform().GetPosition();
-			target.y = 0;
-			//Debug::Print("PlayerPos:" + std::to_string(target.x) + " " + std::to_string(target.y) + " " + std::to_string(target.z) + "\n", Vector2(5, 50));
-			enemy->SetTargetDestination(target);
-			//target = enemy->GetTargetDestination();
-			//Debug::Print("Target:" + std::to_string(target.x) + " " + std::to_string(target.y) + " " + std::to_string(target.z) + "\n", Vector2(5, 60));
-			enemy->FindPath(enemy->GetTargetDestination());
-			enemy->DrawNavigationPath();
-
-			Vector3 direction = (enemy->GetNextPathNode() - enemy->GetTransform().GetPosition()).Normalised();
-			enemy->GetPhysicsObject()->AddForce(direction * 6.0f * dt);
-		}
-		*/
 	}
 }
 
@@ -879,7 +879,7 @@ GameObject* CourseworkGame::AddFloorToWorld(const Vector3& position, Vector3 dim
 		.SetOrientation(Quaternion::EulerAnglesToQuaternion(0,0,0))
 		;
 
-	floor->SetRenderObject(new RenderObject(&floor->GetTransform(), cubeMesh, basicTex, basicShader));
+	floor->SetRenderObject(new RenderObject(&floor->GetTransform(), cubeMesh, groundTex, basicShader));
 	floor->SetPhysicsObject(new PhysicsObject(&floor->GetTransform(), floor->GetBoundingVolume()));
 	floor->GetPhysicsObject()->SetElasticity(0.0f);
 	floor->GetPhysicsObject()->SetInverseMass(0);
@@ -999,8 +999,13 @@ EnemyObject* CourseworkGame::AddEnemyToWorld(const Vector3& position) {
 	EnemyObject* character = new EnemyObject(levelData,world, "GenericEnemy");
 	CapsuleVolume* volume = new CapsuleVolume(meshSize, meshSize, LAYER_ENEMY);
 
-	character->SetPlayerObjectTarget(playerObject[0]);
-
+	character->SetObjectTarget(playerObject[0]);
+	std::vector<GameObject*> targetable;
+	for (auto pO : playerObject)
+	{
+		targetable.push_back(pO.second);
+	}
+	character->SetTargetableObjects(targetable);
 	character->SetBoundingVolume((CollisionVolume*)volume);
 
 	character->GetTransform()
@@ -1067,9 +1072,6 @@ void CourseworkGame::InitDefaultFloor() {
 }
 
 void CourseworkGame::InitGameExamples() {
-	//AddPlayerToWorld(Vector3(0, 5, 0));
-	//AddEnemyToWorld(Vector3(5, 5, 0));
-	//AddBonusToWorld(Vector3(10, 5, 0));
 }
 
 void CourseworkGame::InitSphereGridWorld(int numRows, int numCols, float rowSpacing, float colSpacing, float radius) {

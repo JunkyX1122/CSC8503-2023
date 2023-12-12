@@ -20,6 +20,7 @@ bool PushdownMachine::Update(float dt) {
 		switch (result) {
 			case PushdownState::Pop: {
 				activeState->OnSleep();
+				notification = activeState->passedTag;
 				delete activeState;
 				stateStack.pop();
 				if (stateStack.empty()) {
@@ -27,6 +28,7 @@ bool PushdownMachine::Update(float dt) {
 				}
 				else {
 					activeState = stateStack.top();
+					activeState->passedTag = notification;
 					activeState->OnAwake();
 				}					
 			}break;

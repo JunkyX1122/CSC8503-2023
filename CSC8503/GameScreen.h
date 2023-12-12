@@ -9,16 +9,29 @@ class GameScreen : public PushdownState
 {
 	PushdownResult OnUpdate(float dt, PushdownState** newState) override
 	{
-		
+		if (!gameRef->connected)
+		{
+			gameRef->EraseWorld();
+			gameRef->DisconnectAsClient();
+			passedTag = "Failed Connection";
+			return PushdownResult::Pop;
+		}
+		if (exitFromPause)
+		{
+			if (isServer)
+			{
+				gameRef->DisconnectAsServer();
+			}
+			else
+			{
+				gameRef->DisconnectAsClient();
+			}
+			return PushdownResult::Pop;
+		}
 		if (Window::GetKeyboard()->KeyPressed(KeyCodes::P))
 		{
 			*newState = new PauseScreen(gameRef);
 			return PushdownResult::Push;
-		}
-		if (Window::GetKeyboard()->KeyDown(KeyCodes::F1))
-		{
-			std::cout << "Returning to main menu!\n";
-			return PushdownResult::Pop;
 		}
 		if (isServer)
 		{
@@ -32,8 +45,12 @@ class GameScreen : public PushdownState
 	};
 	void OnAwake() override
 	{
-		
-		std::cout << "Preparing to mine bitcoin!\n";
+		if (passedTag == "Exit")
+		{
+			exitFromPause = true;
+		}
+		gameRef->connected = true;
+		passedTag = "Gameplay";
 	}
 public:
 	GameScreen(CourseworkGame* g, bool b)
@@ -47,4 +64,5 @@ protected:
 	float pauseReminder = 1.0f;
 	CourseworkGame* gameRef;
 	bool isServer;
+	bool exitFromPause = false;
 };

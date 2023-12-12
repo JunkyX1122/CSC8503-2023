@@ -9,18 +9,43 @@ class PauseScreen : public PushdownState
 {
 	PushdownResult OnUpdate(float dt, PushdownState** newState) override
 	{
-		if (Window::GetKeyboard()->KeyPressed(KeyCodes::P))
+		Debug::Print("PAUSE MENU", Vector2(5, 5), Vector4(1, 1, 1, 1));
+		for (int i = 0; i < options.size(); i++)
 		{
-			return PushdownResult::Pop;
+			bool selected = selectedOption == i;
+			Debug::Print((selected ? "> " : "") + options[i], Vector2(5, 15 + 5 * i), selected ? Vector4(0, 1, 0, 1) : Vector4(0.2,0.2,0.2, 1));
 		}
-		Debug::Print("PAUSE MENU", Vector2(5, 85), Vector4(1, 1, 1, 1));
+		if (Window::GetKeyboard()->KeyPressed(KeyCodes::UP))
+		{
+			selectedOption--;
+			if (selectedOption < 0) selectedOption = options.size() - 1;
+		}
+		if (Window::GetKeyboard()->KeyPressed(KeyCodes::DOWN))
+		{
+			selectedOption = (selectedOption + 1) % options.size();
+		}
+		if (Window::GetKeyboard()->KeyPressed(KeyCodes::SPACE))
+		{
+			switch (selectedOption)
+			{
+			case(0):
+				passedTag = "Continue";
+				return PushdownResult::Pop;
+				break;
+			case(1):
+				passedTag = "Exit";
+				return PushdownResult::Pop;
+				break;
+			}
+		}
+		
 
-		//gameRef->UpdateOuter(dt);
+		gameRef->UpdateOuter(dt);
 		return PushdownResult::NoChange;
 	}
 	void OnAwake() override
 	{
-		std::cout << "Press U to unpause game!\n";
+		passedTag = "Pause";
 	}
 public:
 	PauseScreen(CourseworkGame* g)
@@ -30,4 +55,11 @@ public:
 
 protected:
 	CourseworkGame* gameRef;
+	int selectedOption = 0;
+
+	std::vector<std::string> options =
+	{
+		"Continue",
+		"Exit"
+	};
 };
