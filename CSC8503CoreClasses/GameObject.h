@@ -122,8 +122,12 @@ namespace NCL::CSC8503 {
 		{
 			return isCollidingWith;
 		}
+
+		void SetInitialPosition(Vector3 v) { initialPosition = v; }
+		Vector3 GetInitialPosition() { return initialPosition; }
 	protected:
 		Transform			transform;
+		Vector3 initialPosition;
 
 		CollisionVolume*	boundingVolume;
 		PhysicsObject*		physicsObject;
@@ -163,6 +167,10 @@ namespace NCL::CSC8503 {
 		void SetItemsCollected(std::map<int, GameObject*> v) { itemsHolding = v; }
 		void AddToItemCollected(int i, GameObject* g) { itemsHolding.insert({ i,g }); }
 		void RemoveItemCollected(int i) { itemsHolding.erase(i); }
+		void ClearItemsCollected()
+		{
+			itemsHolding.clear();
+		}
 	protected:
 		bool isGrappling;
 		Vector3 grapplePoint;
@@ -184,11 +192,13 @@ namespace NCL::CSC8503 {
 		bool IsAtHome() { return isAtHome; }
 		void SetValue(int i) { value = i; }
 		int GetValue() { return value; }
+		
 	protected:
 		GameObject* collectedBy = nullptr;
 		int itemID = 0;
 		bool isAtHome = false;
 		int value = 1;
+		
 	};
 }
 

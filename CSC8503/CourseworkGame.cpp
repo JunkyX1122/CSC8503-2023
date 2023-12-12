@@ -217,6 +217,16 @@ void CourseworkGame::UpdatePlayerPhysics(float dt)
 				{
 					pO.second->GetTransform().SetPosition(pO.second->GetRespawnPoint());
 					pO.second->GetPhysicsObject()->SetLinearVelocity(Vector3());
+					for (auto iO : pO.second->GetItemsCollected())
+					{
+						iO.second->GetTransform().SetPosition(iO.second->GetInitialPosition());
+						if (iO.second->GetName() == "Item")
+						{
+							BonusObject* itemObject = (BonusObject*)iO.second;
+							itemObject->SetCollectedBy(nullptr);
+						}
+					}
+					pO.second->ClearItemsCollected();
 				}
 				AttachCameraPlayer(true, pO.second, playerID);
 				MovePlayerObject(dt, pO.second, playerID);
@@ -1191,7 +1201,7 @@ BonusObject* CourseworkGame::AddBonusToWorld(const Vector3& position, int type) 
 	apple->GetTransform()
 		.SetScale(Vector3(2, 2, 2))
 		.SetPosition(position);
-
+	apple->SetInitialPosition(position);
 	for (auto eO : enemyObjects)
 	{
 		apple->AddToIgnoreList(eO);
