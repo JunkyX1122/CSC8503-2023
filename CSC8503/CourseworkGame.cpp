@@ -167,6 +167,7 @@ void CourseworkGame::UpdatePlayerInfos(float dt)
 		pp->score = pO.second->GetScore();
 		pp->leader = leaderID;
 		pp->leaderScore = leaderScore;
+		pp->dashTimer = pO.second->GetDashTimer();
 		newPacket = pp;
 
 		gameServer->SendPacketToPeer(*newPacket, pO.first);
@@ -355,8 +356,45 @@ void CourseworkGame::UpdateAsClient(float dt)
 		clientConnectionTimer -= dt;
 		world->ResetObjectNetworkUpdateList();
 		gameClient->UpdateClient();
-		Debug::Print("Score: " + std::to_string(selfScore), Vector2(2, 5));
-		Debug::Print("Leader (Player_" + std::to_string(leaderID) + "): " + std::to_string(leaderScore), Vector2(2, 10));
+		for (int o = 3; o >= 0; o--)
+		{
+			Vector2 offset = Vector2(0.15f, 0.15f) * o;
+
+			float darken = 0.7f;
+			Vector4 col1(1.0f * darken, 0.5f * darken, 0, 1);
+			Vector4 col2(0, 0.5f * darken, 1.0f * darken, 1);
+			Vector4 playerColor = (col1 * (1.0f / 3.0f * leaderID) + col2 * (1.0f - 1.0f / 3.0f * leaderID));
+
+			Vector4 color = Vector4(darken, darken, darken, 1.0f) * (1.0f - 1.0f / 2 * o);
+			Vector4 leaderColor = playerColor * (1.0f - 1.0f / 2 * o);
+			
+
+
+			Debug::Print("Score: " + std::to_string(selfScore), Vector2(2, 5) + offset, color);
+			Debug::Print("Leader (Player_" + std::to_string(leaderID) + "): " + std::to_string(leaderScore), Vector2(2, 10) + offset, leaderColor);
+			int dashNumber = (int)(floor(selfDashTimer * 3)) ;
+			std::string dashString = "Dash [";
+
+			Vector4 dashColor;
+			if (dashNumber > 0)
+			{
+				dashColor = Vector4(1.0f * darken, (1 - 1.0f/(5*3) * dashNumber) * darken, 0, 1);
+				for (int i = 0; i < dashNumber; i++)
+				{
+					dashString += "=";
+				}
+				dashString += "]";
+			}
+			else
+			{
+				dashColor = Vector4(0,1.0f * darken, 0, 1);
+				dashString += "READY!]";
+			}
+			dashColor *= (1.0f - 1.0f / 2 * o);
+			Debug::Print(dashString, Vector2(2, 90) + offset, dashColor);
+		}
+
+
 		for (GameObject* objects : world->GetToUpdateList())
 		{
 			objects->GetTransform().SetPosition(objects->GetTransform().GetPosition() * (1.0f - 0.2f) + objects->GetPositionToDampenTo() * 0.2f);
@@ -547,6 +585,7 @@ void CourseworkGame::ReceivePacket(int type, GamePacket* payload, int source)
 				selfScore = infoPacket->score;
 				leaderID = infoPacket->leader;
 				leaderScore = infoPacket->leaderScore;
+				selfDashTimer = infoPacket->dashTimer;
 				clientConnectionTimer = CONNECTION_TIMEOUT;
 			}
 			break;
@@ -967,7 +1006,14 @@ void CourseworkGame::GenerateLevel()
 		{
 			float unitHeight = nodeHeight * (float(type) - 48);
 			Vector3 cubePosition = lgu.position + Vector3(0, unitHeight, 0);
-			AddCubeToWorld(cubePosition, Vector3(1 * nodeSize / 2, unitHeight, 1 * nodeSize / 2) , 0);
+			GameObject* cube = AddCubeToWorld(cubePosition, Vector3(1 * nodeSize / 2, unitHeight, 1 * nodeSize / 2) , 0);
+			if (lgu.position.x >= 7 * nodeSize &&
+				lgu.position.x <= 12 * nodeSize &&
+				lgu.position.z >= 7 * nodeSize &&
+				lgu.position.z <= 12 * nodeSize)
+			{
+				cube->GetRenderObject()->SetColour(Vector4(0.5, 1, 0.5, 1));
+			}
 			if ((float(type) - 48) == 8)
 			{
 				switch (bridgeEndCount)
@@ -1159,7 +1205,7 @@ PlayerObject* CourseworkGame::AddPlayerToWorld(int playerID, const Vector3& posi
 
 EnemyObject* CourseworkGame::AddEnemyToWorld(const Vector3& position) {
 
-	float meshSize = 2.0f;
+	float meshSize = 4.0f;
 	float inverseMass = 50.0f;
 	EnemyObject* character = new EnemyObject(levelData,world, "GenericEnemy");
 	CapsuleVolume* volume = new CapsuleVolume(meshSize, meshSize, LAYER_ENEMY);

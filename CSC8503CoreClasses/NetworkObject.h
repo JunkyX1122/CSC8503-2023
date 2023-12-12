@@ -61,6 +61,7 @@ namespace NCL::CSC8503 {
 		int		score;
 		int		leader;
 		int		leaderScore;
+		float	dashTimer;
 		PlayerInfoPacket() {
 			type = Player_Info;
 			size = sizeof(PlayerInfoPacket);

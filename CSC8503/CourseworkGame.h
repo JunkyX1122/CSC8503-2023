@@ -148,6 +148,7 @@ namespace NCL {
 			int selfScore = 0;
 			int leaderID = 0;
 			int leaderScore = 0;
+			float selfDashTimer = 0.0f;
 			// NETWORKING
 
 			GameServer* gameServer = nullptr;
