@@ -58,10 +58,25 @@ namespace NCL::CSC8503 {
 
 	struct PlayerInfoPacket : public GamePacket {
 		int		yourAssignedObject;
-		
+
 		PlayerInfoPacket() {
 			type = Player_Info;
 			size = sizeof(PlayerInfoPacket);
+		}
+	};
+
+	struct PlayerDrawLinePacket : public GamePacket {
+		char lineDrawType; // g - Grapple
+		bool doDraw;
+		int grapplePlayerID = -1;
+		Vector3 lineStart;
+		Vector3 lineEnd;
+		Vector4 color;
+		
+
+		PlayerDrawLinePacket() {
+			type = Player_DrawLine;
+			size = sizeof(PlayerDrawLinePacket);
 		}
 	};
 

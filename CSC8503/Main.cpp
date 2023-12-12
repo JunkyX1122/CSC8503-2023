@@ -404,15 +404,11 @@ int main() {
 				if (Window::GetKeyboard()->KeyPressed(KeyCodes::NEXT)) {
 					w->ShowConsole(false);
 				}
-
-				if (Window::GetKeyboard()->KeyPressed(KeyCodes::NUM1)) {
-
-				}
 				if (Window::GetKeyboard()->KeyPressed(KeyCodes::NUM9)) {
-					w->SetWindowPosition(0, 500);
+					w->SetWindowPosition(0, 420);
 				}
 				if (Window::GetKeyboard()->KeyPressed(KeyCodes::NUM0)) {
-					w->SetWindowPosition(640, 500);
+					w->SetWindowPosition(640, 420);
 				}
 
 				w->SetTitle("Gametech frame time:" + std::to_string(1000.0f * dt));

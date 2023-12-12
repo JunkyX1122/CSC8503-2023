@@ -67,7 +67,7 @@ void CourseworkGame::InitialiseGameAsServer()
 	std::cout << "Started World As Server\n";
 	InitialiseAssets();
 	
-	world->GetMainCamera().SetPosition(Vector3(20 * 8, 350, 20 * 9));
+	world->GetMainCamera().SetPosition(Vector3(20 * 8, 350, 20 * 20));
 	world->GetMainCamera().SetPitch(-70.0f);
 	NetworkBase::Initialise();
 	int port = NetworkBase::GetDefaultPort();
@@ -103,6 +103,7 @@ void CourseworkGame::InitialiseGameAsClient()
 	gameClient->RegisterPacketHandler(Player_Connected, this);
 	gameClient->RegisterPacketHandler(Player_Disconnected, this);
 	gameClient->RegisterPacketHandler(Player_Info, this);
+	gameClient->RegisterPacketHandler(Player_DrawLine, this);
 	bool canConnect = gameClient->Connect(127, 0, 0, 1, port);
 	connected = canConnect;
 	clientConnectionTimer = SERVER_CONNECTION_TIMELIMIT;
@@ -206,6 +207,31 @@ void CourseworkGame::UpdateAsServer(float dt)
 		gameServer->SendPacketToPeer(*newPacket, pO.first);
 		delete newPacket;
 		
+	}
+	for (auto pO : playerObject)
+	{
+		GamePacket* newPacket = nullptr;
+
+		PlayerDrawLinePacket* pp = new PlayerDrawLinePacket();
+
+		if (pO.second->IsGrappling())
+		{
+			pp->lineDrawType = 'g';
+			pp->grapplePlayerID = pO.first;
+			pp->lineStart = pO.second->GetTransform().GetPosition();
+			pp->lineEnd = pO.second->GetGrapplePoint();
+			pp->color = pO.second->GetRenderObject()->GetColour();
+			pp->doDraw = true;
+		}
+		else
+		{
+			pp->doDraw = false;
+		}
+		newPacket = pp;
+
+		gameServer->SendGlobalPacket(*newPacket);
+		delete newPacket;
+
 	}
 	
 	
@@ -426,40 +452,52 @@ void CourseworkGame::ReceivePacket(int type, GamePacket* payload, int source)
 {
 	if (gameClient)
 	{
-		if (type == BasicNetworkMessages::Player_Info)
+		switch (type)
 		{
-			PlayerInfoPacket* infoPacket = (PlayerInfoPacket*)payload;
-			//std::cout << infoPacket->yourAssignedObject << "\n";
-			selfClientID = infoPacket->yourAssignedObject;
-			clientConnectionTimer = CONNECTION_TIMEOUT;
-		}
-		else
-		{
-			//std::cout << selfClientID << "\n";
-			if (world->GetAllObjectsForNetworkUpdating().size() > 0)
+		case(BasicNetworkMessages::Player_Info):
+			{
+				PlayerInfoPacket* infoPacket = (PlayerInfoPacket*)payload;
+				//std::cout << infoPacket->yourAssignedObject << "\n";
+				selfClientID = infoPacket->yourAssignedObject;
+				clientConnectionTimer = CONNECTION_TIMEOUT;
+			}
+			break;
+
+		case(BasicNetworkMessages::Player_DrawLine):
+			{
+				PlayerDrawLinePacket* drawPacket = (PlayerDrawLinePacket*)payload;
+				if (drawPacket->doDraw)
+				{
+					if (drawPacket->lineDrawType == 'g')
+					{
+						Debug::DrawLine(playerObject[drawPacket->grapplePlayerID]->GetTransform().GetPosition(), drawPacket->lineEnd, drawPacket->color);
+					}
+				}
+			}
+			break;
+
+		default:
 			{
 				int i = 0;
 				for (GameObject* gb : world->GetAllObjectsForNetworkUpdating())
 				{
-					
+
 					if (gb->GetNetworkObject()->ReadPacket(*payload))
 					{
 						world->RemoveFromNetworkUpdateList(i);
 						return;
 					}
-					
+
 					i++;
 				}
 			}
+			break;
 		}
 	}
 	if (gameServer)
 	{
 		int playerID = source;
 		ClientPacket* clientPacket = (ClientPacket*)payload;
-		//std::cout << "Player ID: " << playerID << "\n";
-		
-
 		for (int i = 0; i < sizeof(ClientPacket::buttonstates); i++)
 		{
 			playerInputs[playerID][i] = clientPacket->buttonstates[i];
@@ -811,7 +849,7 @@ void CourseworkGame::InitWorld() {
 		GenerateLevel();
 		for (int i = 0; i < 5; i++)
 		{
-			enemyObjects.push_back(AddEnemyToWorld(Vector3(18 * 20, 10, (1 + i * 3) * 20)));
+			enemyObjects.push_back(AddEnemyToWorld(Vector3(38 * 20, 10, (1 + i * 3) * 20)));
 		}
 		world->ResetObjectNetworkUpdateList();
 		
