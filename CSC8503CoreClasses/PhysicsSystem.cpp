@@ -218,6 +218,8 @@ void PhysicsSystem::BasicCollisionDetection()
 			{
 				(*i)->SetColliding(true);
 				(*j)->SetColliding(true);
+				(*i)->AddToCollidingList(*j);
+				(*j)->AddToCollidingList(*i);
 				//std::cout << "Collision between " << (*i)->GetName() << " and " << (*j) -> GetName() << std::endl;
 				if ((*i)->GetBoundingVolume()->isCollidable && (*j)->GetBoundingVolume()->isCollidable)
 				{
@@ -366,6 +368,8 @@ void PhysicsSystem::NarrowPhase()
 		{
 			(info.a)->SetColliding(true);
 			(info.b)->SetColliding(true);
+			(info.a)->AddToCollidingList(info.b);
+			(info.b)->AddToCollidingList(info.a);
 			info.framesLeft = numCollisionFrames;
 			if ((info.a)->GetBoundingVolume()->isCollidable && (info.b)->GetBoundingVolume()->isCollidable)
 			{
@@ -476,7 +480,7 @@ void PhysicsSystem::ResetIsCollidings() {
 	gameWorld.OperateOnContents(
 		[](GameObject* o) {
 			o->SetColliding(false);
-
+			o->ResetCollidingList();
 		}
 	);
 }

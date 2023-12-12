@@ -62,6 +62,36 @@ void CourseworkGame::InitialiseGame()
 {
 	
 }
+void CourseworkGame::EraseWorld()
+{
+	world->ClearAndErase();
+	physics->Clear();
+	playerObject.clear();
+	playerGroundedCollider.clear();
+	playerCameraPosition.clear();
+	playerCameraRotation.clear();
+	playerInputs.clear();
+	playerRotation.clear();
+	playerCameraOffsetPosition.clear();
+	enemyObjects.clear();
+	bonusObjects.clear();
+}
+void CourseworkGame::InitialiseAssets()
+{
+	cubeMesh = renderer->LoadMesh("cube.msh");
+	sphereMesh = renderer->LoadMesh("sphere.msh");
+	charMesh = renderer->LoadMesh("goat.msh");
+	enemyMesh = renderer->LoadMesh("Keeper.msh");
+	bonusMesh = renderer->LoadMesh("Crystalsv03.msh");
+	capsuleMesh = renderer->LoadMesh("capsule.msh");
+
+	basicTex = renderer->LoadTexture("checkerboard.png");
+	groundTex = renderer->LoadTexture("Dirty_Grass_DIFF.png");
+	basicShader = renderer->LoadShader("scene.vert", "scene.frag");
+}
+
+
+
 void CourseworkGame::InitialiseGameAsServer()
 {
 	std::cout << "Started World As Server\n";
@@ -78,7 +108,6 @@ void CourseworkGame::InitialiseGameAsServer()
 	EraseWorld();
 	InitWorld();
 }
-
 void CourseworkGame::OnPlayerConnect(int peerID)
 {
 	std::cout << "Player ID " << peerID << " has connected!\n";
@@ -88,6 +117,164 @@ void CourseworkGame::OnPlayerDisconnect(int peerID)
 {
 	std::cout << "Player ID " << peerID << " has disconnected!\n";
 	activePlayers[peerID] = 0;
+}
+void CourseworkGame::UpdateAsServer(float dt)
+{
+	UpdatePlayerInfos(dt);
+	gameServer->UpdateServer();
+	UpdatePlayerPhysics(dt);
+	world->GetMainCamera().UpdateCamera(dt);
+	UpdateKeys();
+	UpdatePathFindings(dt);
+	UpdateBonusObjects(dt);
+
+
+
+	world->UpdateWorld(dt);
+	//renderer->Update(dt);
+	physics->Update(dt);
+	if (true)
+	{
+		renderer->Render();
+		Debug::UpdateRenderables(dt);
+	}
+	// Here we need to send the packets to the client. For now, I don't care about the client sending inputs, I just want the objects
+	// to display on the client's screen.
+	BroadcastSnapshot(false);
+	//
+	//std::this_thread::sleep_for(std::chrono::milliseconds(10));
+}
+void CourseworkGame::UpdatePlayerInfos(float dt)
+{
+	leaderScore = 0;
+	leaderID = 0;
+	for (auto pO : playerObject)
+	{
+		if (pO.second->GetScore() > leaderScore)
+		{
+			leaderScore = pO.second->GetScore();
+			leaderID = pO.first;
+		}
+	}
+	for (auto pO : playerObject)
+	{
+		GamePacket* newPacket = nullptr;
+
+		PlayerInfoPacket* pp = new PlayerInfoPacket();
+
+		pp->yourAssignedObject = pO.first;
+		pp->score = pO.second->GetScore();
+		pp->leader = leaderID;
+		pp->leaderScore = leaderScore;
+		newPacket = pp;
+
+		gameServer->SendPacketToPeer(*newPacket, pO.first);
+		delete newPacket;
+
+	}
+	for (auto pO : playerObject)
+	{
+		GamePacket* newPacket = nullptr;
+
+		PlayerDrawLinePacket* pp = new PlayerDrawLinePacket();
+
+		if (pO.second->IsGrappling())
+		{
+			pp->lineDrawType = 'g';
+			pp->grapplePlayerID = pO.first;
+			pp->lineStart = pO.second->GetTransform().GetPosition();
+			pp->lineEnd = pO.second->GetGrapplePoint();
+			pp->color = pO.second->GetRenderObject()->GetColour();
+			pp->doDraw = true;
+		}
+		else
+		{
+			pp->doDraw = false;
+		}
+		newPacket = pp;
+
+		gameServer->SendGlobalPacket(*newPacket);
+		delete newPacket;
+
+	}
+}
+void CourseworkGame::UpdatePlayerPhysics(float dt)
+{
+	Vector3 oldCamPosition = world->GetMainCamera().GetPosition();
+	float oldCamPitch = world->GetMainCamera().GetPitch();
+	float oldCamYaw = world->GetMainCamera().GetYaw();
+	if (playerObject.size() > 0)
+	{
+		for (auto pO : playerObject)
+		{
+			if (activePlayers[pO.first] == 1)
+			{
+				int playerID = pO.first;
+				Vector3 playerPos = pO.second->GetTransform().GetPosition();
+				if (playerPos.x < outOfBounds[0] || playerPos.z < outOfBounds[1] ||
+					playerPos.x > outOfBounds[2] || playerPos.z > outOfBounds[3])
+				{
+					pO.second->GetTransform().SetPosition(pO.second->GetRespawnPoint());
+					pO.second->GetPhysicsObject()->SetLinearVelocity(Vector3());
+				}
+				AttachCameraPlayer(true, pO.second, playerID);
+				MovePlayerObject(dt, pO.second, playerID);
+
+				if (pO.second && playerGroundedCollider[playerID])
+				{
+					playerGroundedCollider[playerID]->GetTransform().SetPosition(pO.second->GetTransform().GetPosition() + Vector3(0, -1.75f, 0));
+				}
+			}
+		}
+	}
+	world->GetMainCamera().SetPosition(oldCamPosition);
+	world->GetMainCamera().SetPitch(oldCamPitch);
+	world->GetMainCamera().SetYaw(oldCamYaw);
+}
+void CourseworkGame::UpdatePathFindings(float dt)
+{
+	for (EnemyObject* enemy : enemyObjects)
+	{
+		if (enemy->GetStateMachine()) enemy->GetStateMachine()->Update(dt);
+	}
+}
+void CourseworkGame::UpdateBonusObjects(float dt)
+{
+	for (BonusObject* item : bonusObjects)
+	{
+		for (GameObject* collidingWith : item->GetCollidingList())
+		{
+			if (collidingWith->GetName() == "Player")
+			{
+				PlayerObject* currentPlayer = (PlayerObject*)collidingWith;
+				if (item->GetCollectedBy())
+				{
+					PlayerObject* stolenFrom = (PlayerObject*)item->GetCollectedBy();
+					stolenFrom->RemoveItemCollected(item->GetItemID());
+				}
+				item->SetCollectedBy(currentPlayer);
+				currentPlayer->AddToItemCollected(item->GetItemID(), item);
+				//currentPlayer->SetScore(currentPlayer->GetScore()+1);
+			}
+		}
+	}
+	for (auto pO : playerObject)
+	{
+		int numItems = 0;
+		for (auto iO : pO.second->GetItemsCollected())
+		{
+			iO.second->GetTransform().SetPosition(pO.second->GetTransform().GetPosition() + Vector3(0, 7.5f + 10.0f * numItems, 0));
+			iO.second->GetPhysicsObject()->SetLinearVelocity(Vector3(0, 0, 0));
+			numItems++;
+		}
+	}
+}
+void CourseworkGame::DisconnectAsServer()
+{
+	EraseWorld();
+	gameServer->Shutdown();
+	gameServer->Destroy();
+	//delete gameServer;
 }
 
 void CourseworkGame::InitialiseGameAsClient()
@@ -119,13 +306,39 @@ void CourseworkGame::OnOtherPlayerDisconnect(int peerID)
 {
 
 }
-
-void CourseworkGame::DisconnectAsServer()
+void CourseworkGame::UpdateAsClient(float dt)
 {
-	EraseWorld();
-	gameServer->Shutdown();
-	gameServer->Destroy();
-	//delete gameServer;
+	// Here we need to recieve the packets from the server.
+	//world->ClearAndErase();
+	//world->GetMainCamera().UpdateCamera(dt);
+
+	if (gameClient)
+	{
+		if (clientConnectionTimer <= 0)
+		{
+			connected = false;
+			return;
+		}
+		clientConnectionTimer -= dt;
+		world->ResetObjectNetworkUpdateList();
+		gameClient->UpdateClient();
+		Debug::Print("Score: " + std::to_string(selfScore), Vector2(2, 5));
+		Debug::Print("Leader (Player_" + std::to_string(leaderID) + "): " + std::to_string(leaderScore), Vector2(2, 10));
+		for (GameObject* objects : world->GetToUpdateList())
+		{
+			objects->GetTransform().SetPosition(objects->GetTransform().GetPosition() * (1.0f - 0.2f) + objects->GetPositionToDampenTo() * 0.2f);
+		}
+		ClientSendInputs();
+		if (selfClientID >= 0)
+		{
+			AttachCameraPlayer(false, playerObject[selfClientID], selfClientID);
+		}
+		world->UpdateWorld(dt);
+		renderer->Update(dt);
+		renderer->Render();
+		Debug::UpdateRenderables(dt);
+	}
+	//std::this_thread::sleep_for(std::chrono::milliseconds(10));
 }
 void CourseworkGame::DisconnectAsClient()
 {
@@ -133,39 +346,6 @@ void CourseworkGame::DisconnectAsClient()
 	gameClient->Disconnect();
 	gameClient->Destroy();
 	//delete gameClient;
-}
-
-void CourseworkGame::EraseWorld()
-{
-	world->ClearAndErase();
-	physics->Clear();
-	playerObject.clear();
-	playerGroundedCollider.clear();
-	playerCameraPosition.clear();
-	playerCameraRotation.clear();
-	playerInputs.clear();
-	playerRotation.clear();
-	playerCameraOffsetPosition.clear();
-}
-/*
-
-Each of the little demo scenarios used in the game uses the same 2 meshes, 
-and the same texture and shader. There's no need to ever load in anything else
-for this module, even in the coursework, but you can add it if you like!
-
-*/
-void CourseworkGame::InitialiseAssets() 
-{
-	cubeMesh = renderer->LoadMesh("cube.msh");
-	sphereMesh = renderer->LoadMesh("sphere.msh");
-	charMesh = renderer->LoadMesh("goat.msh");
-	enemyMesh = renderer->LoadMesh("Keeper.msh");
-	bonusMesh = renderer->LoadMesh("apple.msh");
-	capsuleMesh = renderer->LoadMesh("capsule.msh");
-
-	basicTex = renderer->LoadTexture("checkerboard.png");
-	groundTex = renderer->LoadTexture("Dirty_Grass_DIFF.png");
-	basicShader = renderer->LoadShader("scene.vert", "scene.frag");
 }
 
 CourseworkGame::~CourseworkGame()	{
@@ -192,103 +372,7 @@ void CourseworkGame::UpdateGame(float dt)
 	//UpdateAsClient(dt);
 }
 
-void CourseworkGame::UpdateAsServer(float dt)
-{
-	for (auto pO : playerObject)
-	{
-		GamePacket* newPacket = nullptr;
 
-		PlayerInfoPacket* pp = new PlayerInfoPacket();
-
-		pp->yourAssignedObject = pO.first;
-	
-		newPacket = pp;
-
-		gameServer->SendPacketToPeer(*newPacket, pO.first);
-		delete newPacket;
-		
-	}
-	for (auto pO : playerObject)
-	{
-		GamePacket* newPacket = nullptr;
-
-		PlayerDrawLinePacket* pp = new PlayerDrawLinePacket();
-
-		if (pO.second->IsGrappling())
-		{
-			pp->lineDrawType = 'g';
-			pp->grapplePlayerID = pO.first;
-			pp->lineStart = pO.second->GetTransform().GetPosition();
-			pp->lineEnd = pO.second->GetGrapplePoint();
-			pp->color = pO.second->GetRenderObject()->GetColour();
-			pp->doDraw = true;
-		}
-		else
-		{
-			pp->doDraw = false;
-		}
-		newPacket = pp;
-
-		gameServer->SendGlobalPacket(*newPacket);
-		delete newPacket;
-
-	}
-	
-	
-	gameServer->UpdateServer();
-	
-	Vector3 oldCamPosition = world->GetMainCamera().GetPosition();
-	float oldCamPitch = world->GetMainCamera().GetPitch();
-	float oldCamYaw = world->GetMainCamera().GetYaw();
-	//Window::GetWindow()->ShowOSPointer(true);
-	//Window::GetWindow()->LockMouseToWindow(false);
-	if (playerObject.size() > 0)
-	{
-		for (auto pO : playerObject)
-		{
-			if (activePlayers[pO.first] == 1)
-			{
-				int playerID = pO.first;
-				Vector3 playerPos = pO.second->GetTransform().GetPosition();
-				if (playerPos.x < outOfBounds[0] || playerPos.z < outOfBounds[1] ||
-					playerPos.x > outOfBounds[2] || playerPos.z > outOfBounds[3])
-				{
-					pO.second->GetTransform().SetPosition(pO.second->GetRespawnPoint());
-					pO.second->GetPhysicsObject()->SetLinearVelocity(Vector3());
-				}
-				AttachCameraPlayer(true, pO.second, playerID);
-				MovePlayerObject(dt, pO.second, playerID);
-
-				if (pO.second && playerGroundedCollider[playerID])
-				{
-					playerGroundedCollider[playerID]->GetTransform().SetPosition(pO.second->GetTransform().GetPosition() + Vector3(0, -1.75f, 0));
-				}
-			}
-		}
-	}
-	world->GetMainCamera().SetPosition(oldCamPosition);
-	world->GetMainCamera().SetPitch(oldCamPitch);
-	world->GetMainCamera().SetYaw(oldCamYaw);
-
-	world->GetMainCamera().UpdateCamera(dt);
-
-	UpdateKeys();
-
-	UpdatePathFindings(dt);
-	world->UpdateWorld(dt);
-	//renderer->Update(dt);
-	physics->Update(dt);
-	if (true)
-	{
-		renderer->Render();
-		Debug::UpdateRenderables(dt);
-	}
-	// Here we need to send the packets to the client. For now, I don't care about the client sending inputs, I just want the objects
-	// to display on the client's screen.
-	BroadcastSnapshot(false);
-	//
-	//std::this_thread::sleep_for(std::chrono::milliseconds(10));
-}
 
 void CourseworkGame::BroadcastSnapshot(bool deltaFrame) {
 	std::vector<GameObject*>::const_iterator first;
@@ -318,38 +402,6 @@ void CourseworkGame::BroadcastSnapshot(bool deltaFrame) {
 			delete newPacket;
 		}
 	}
-}
-void CourseworkGame::UpdateAsClient(float dt)
-{
-	// Here we need to recieve the packets from the server.
-	//world->ClearAndErase();
-	//world->GetMainCamera().UpdateCamera(dt);
-	
-	if (gameClient)
-	{
-		if (clientConnectionTimer <= 0) 
-		{
-			connected = false;
-			return;
-		}
-		clientConnectionTimer -= dt;
-		world->ResetObjectNetworkUpdateList();
-		gameClient->UpdateClient();
-		for (GameObject* objects : world->GetToUpdateList())
-		{
-			objects->GetTransform().SetPosition(objects->GetTransform().GetPosition() * (1.0f - 0.2f) + objects->GetPositionToDampenTo() * 0.2f);
-		}
-		ClientSendInputs();
-		if (selfClientID >= 0)
-		{
-			AttachCameraPlayer(false, playerObject[selfClientID], selfClientID);
-		}
-		world->UpdateWorld(dt);
-		renderer->Update(dt);
-		renderer->Render();
-		Debug::UpdateRenderables(dt);
-	}
-	//std::this_thread::sleep_for(std::chrono::milliseconds(10));
 }
 void CourseworkGame::ClientSendInputs()
 {
@@ -459,6 +511,9 @@ void CourseworkGame::ReceivePacket(int type, GamePacket* payload, int source)
 				PlayerInfoPacket* infoPacket = (PlayerInfoPacket*)payload;
 				//std::cout << infoPacket->yourAssignedObject << "\n";
 				selfClientID = infoPacket->yourAssignedObject;
+				selfScore = infoPacket->score;
+				leaderID = infoPacket->leader;
+				leaderScore = infoPacket->leaderScore;
 				clientConnectionTimer = CONNECTION_TIMEOUT;
 			}
 			break;
@@ -511,15 +566,7 @@ void CourseworkGame::UpdateOuter(float dt)
 	renderer->Render();
 	Debug::UpdateRenderables(dt);
 }
-void CourseworkGame::UpdatePathFindings(float dt)
-{
-	
-	for (EnemyObject* enemy : enemyObjects)
-	{
-		if (enemy->GetStateMachine()) enemy->GetStateMachine()->Update(dt);
-	}
-	
-}
+
 
 void CourseworkGame::UpdateKeys() 
 {
@@ -685,7 +732,7 @@ void CourseworkGame::MovePlayerObject(float dt, PlayerObject* pO, int playerID)
 		Ray ray = CollisionDetection::BuildRayFromCentre(world->GetMainCamera());
 		
 		RayCollision closestCollision;
-		std::vector<int> ignoreList = { LAYER_PLAYER };
+		std::vector<int> ignoreList = { LAYER_PLAYER, LAYER_ITEM };
 
 		if (world->Raycast(ray, closestCollision, true, nullptr, ignoreList))
 		{
@@ -825,7 +872,7 @@ void CourseworkGame::InitWorld() {
 	world->ClearAndErase();
 	physics->Clear();
 	
-	enemyObjects.clear();
+	
 	//playerObject = AddPlayerToWorld(Vector3(20 * 8, 5, 20 * 9));
 	//playerObject->SetRespawnPoint(Vector3(20 * 8, 5, 20 * 9));
 	//playerGroundedCollider = AddSphereToWorld(playerObject->GetTransform().GetPosition(), 1.0f, 0.1f, LAYER_DEFAULT, false, false);
@@ -844,22 +891,14 @@ void CourseworkGame::InitWorld() {
 			InitialisePlayerAsServer(i);
 		}
 	}
-	if (true)
+	GenerateLevel();
+	for (int i = 0; i < 5; i++)
 	{
-		GenerateLevel();
-		for (int i = 0; i < 5; i++)
-		{
-			enemyObjects.push_back(AddEnemyToWorld(Vector3(38 * 20, 10, (1 + i * 3) * 20)));
-		}
-		world->ResetObjectNetworkUpdateList();
-		
+		enemyObjects.push_back(AddEnemyToWorld(Vector3(38 * 20, 10, (1 + i * 3) * 20)));
 	}
-	else
-	{
-		InitMixedGridWorld(15, 15, 3.5f, 3.5f);
-		//BridgeConstraintTest();
-		InitDefaultFloor();
-	}
+	GenerateItems();
+	world->ResetObjectNetworkUpdateList();
+	
 	
 }
 
@@ -925,7 +964,33 @@ void CourseworkGame::GenerateLevel()
 	outOfBounds[2] = levelData->GetGridDimentions().x * nodeSize + nodeSize / 2;
 	outOfBounds[3] = levelData->GetGridDimentions().y * nodeSize + nodeSize / 2;
 }
+void CourseworkGame::GenerateItems()
+{
+	std::ifstream infile(Assets::DATADIR + "ItemGrid1.txt");
+	int nodeSize;
+	int gridWidth;
+	int gridHeight;
+	infile >> nodeSize;
+	infile >> gridWidth;
+	infile >> gridHeight;
 
+
+	for (int y = 0; y < gridHeight; ++y)
+	{
+		for (int x = 0; x < gridWidth; ++x)
+		{
+			char type = 0;
+			infile >> type;
+			Vector3 position = Vector3((float)(x * nodeSize), 0.25f, (float)(y * nodeSize));
+			if (isdigit(type))
+			{
+				int digit = (int(type) - 48);
+				bonusObjects.push_back(AddBonusToWorld(position, digit));
+			}
+		}
+	}
+	std::cout << bonusObjects.size() << "\n";
+}
 /*
 
 A single function to add a large immoveable cube to the bottom of our world
@@ -1092,19 +1157,26 @@ EnemyObject* CourseworkGame::AddEnemyToWorld(const Vector3& position) {
 	return character;
 }
 
-GameObject* CourseworkGame::AddBonusToWorld(const Vector3& position) {
-	GameObject* apple = new GameObject();
+BonusObject* CourseworkGame::AddBonusToWorld(const Vector3& position, int type) {
+	BonusObject* apple = new BonusObject();
+	apple->SetName("Item");
 
-	SphereVolume* volume = new SphereVolume(0.5f);
+	SphereVolume* volume = new SphereVolume(3.5f, LAYER_ITEM);
 	apple->SetBoundingVolume((CollisionVolume*)volume);
 	apple->GetTransform()
 		.SetScale(Vector3(2, 2, 2))
 		.SetPosition(position);
 
-	apple->SetRenderObject(new RenderObject(&apple->GetTransform(), cubeMesh, nullptr, basicShader));
+	for (auto eO : enemyObjects)
+	{
+		apple->AddToIgnoreList(eO);
+	}
+	apple->SetRenderObject(new RenderObject(&apple->GetTransform(), bonusMesh, nullptr, basicShader));
 	apple->SetPhysicsObject(new PhysicsObject(&apple->GetTransform(), apple->GetBoundingVolume()));
-
-	apple->GetPhysicsObject()->SetInverseMass(1.0f);
+	int id = 3000 + bonusObjects.size();
+	apple->SetNetworkObject(new NetworkObject(*apple, id));
+	apple->SetItemID(id);
+	apple->GetPhysicsObject()->SetInverseMass(0.1f);
 	apple->GetPhysicsObject()->InitSphereInertia();
 
 	world->AddGameObject(apple);

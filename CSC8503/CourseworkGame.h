@@ -44,6 +44,10 @@ namespace NCL {
 
 			void InitCamera();
 			void UpdateKeys();
+			void UpdatePlayerInfos(float dt);
+			void UpdatePlayerPhysics(float dt);
+			void UpdatePathFindings(float dt);
+			void UpdateBonusObjects(float dt);
 
 			void InitWorld();
 
@@ -69,7 +73,8 @@ namespace NCL {
 			void AttachCameraPlayer(bool asServer, PlayerObject* pO, int playerID);
 			void MovePlayerObject(float dt, PlayerObject* pO, int playerID);
 			void GenerateLevel();
-			void UpdatePathFindings(float dt);
+			void GenerateItems();
+			
 
 
 			GameObject* AddFloorToWorld(const Vector3& position, Vector3 dimensions);
@@ -80,7 +85,7 @@ namespace NCL {
 			
 			PlayerObject* AddPlayerToWorld(int playerID, const Vector3& position);
 			EnemyObject* AddEnemyToWorld(const Vector3& position);
-			GameObject* AddBonusToWorld(const Vector3& position);
+			BonusObject* AddBonusToWorld(const Vector3& position, int type = 0);
 
 #ifdef USEVULKAN
 			GameTechVulkanRenderer*	renderer;
@@ -129,6 +134,7 @@ namespace NCL {
 			LevelData* levelData = nullptr;
 			float outOfBounds[4] = {};
 			std::vector<EnemyObject*> enemyObjects = std::vector<EnemyObject*>{};
+			std::vector<BonusObject*> bonusObjects = std::vector<BonusObject*>{};
 
 
 			std::map<int, PlayerObject*> playerObject = {};
@@ -139,6 +145,9 @@ namespace NCL {
 			std::map<int, Quaternion> playerRotation = {};
 			std::map<int, Vector3> playerCameraOffsetPosition = {};
 			int selfClientID = 0;
+			int selfScore = 0;
+			int leaderID = 0;
+			int leaderScore = 0;
 			// NETWORKING
 
 			GameServer* gameServer = nullptr;

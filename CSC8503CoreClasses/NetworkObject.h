@@ -58,7 +58,9 @@ namespace NCL::CSC8503 {
 
 	struct PlayerInfoPacket : public GamePacket {
 		int		yourAssignedObject;
-
+		int		score;
+		int		leader;
+		int		leaderScore;
 		PlayerInfoPacket() {
 			type = Player_Info;
 			size = sizeof(PlayerInfoPacket);

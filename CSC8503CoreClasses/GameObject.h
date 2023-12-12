@@ -108,6 +108,19 @@ namespace NCL::CSC8503 {
 
 		void SetPositionToDampenTo(Vector3 v) { positionToDampenTo = v; }
 		Vector3 GetPositionToDampenTo() { return positionToDampenTo; }
+
+		void ResetCollidingList()
+		{
+			isCollidingWith.clear();
+		}
+		void AddToCollidingList(GameObject* o)
+		{
+			isCollidingWith.push_back(o);
+		}
+		std::vector<GameObject*> GetCollidingList()
+		{
+			return isCollidingWith;
+		}
 	protected:
 		Transform			transform;
 
@@ -124,6 +137,7 @@ namespace NCL::CSC8503 {
 		Vector3 broadphaseAABB;
 		Vector3 positionToDampenTo;
 		std::vector<GameObject*> ignoreList = std::vector<GameObject*>{};
+		std::vector<GameObject*> isCollidingWith = std::vector<GameObject*>{};
 	};
 
 	class PlayerObject : public GameObject
@@ -142,12 +156,32 @@ namespace NCL::CSC8503 {
 		void SetDashTimer(float i) { dashTimer = i; }
 		float GetJumpTimer() { return jumpTimer; }
 		void SetJumpTimer(float i) { jumpTimer = i; }
+		int GetScore() { return score; }
+		void SetScore(int i) { score = i; }
+		std::map<int, GameObject*> GetItemsCollected() { return itemsHolding; }
+		void SetItemsCollected(std::map<int, GameObject*> v) { itemsHolding = v; }
+		void AddToItemCollected(int i, GameObject* g) { itemsHolding.insert({ i,g }); }
+		void RemoveItemCollected(int i) { itemsHolding.erase(i); }
 	protected:
 		bool isGrappling;
 		Vector3 grapplePoint;
 		Vector3 respawnPoint;
 		float dashTimer = 0;
 		float jumpTimer = 0;
+		std::map<int,GameObject*> itemsHolding = std::map<int, GameObject*>{};
+		int score = 0;
+	};
+
+	class BonusObject : public GameObject
+	{
+	public:
+		void SetCollectedBy(GameObject* g) { collectedBy = g; }
+		GameObject* GetCollectedBy() { return collectedBy; }
+		void SetItemID(int i) { itemID = i; }
+		int GetItemID() { return itemID; }
+	protected:
+		GameObject* collectedBy = nullptr;
+		int itemID = 0;
 	};
 }
 

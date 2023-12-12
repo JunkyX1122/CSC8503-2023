@@ -161,7 +161,7 @@ bool EnemyObject::CanSeePlayer()
 			Ray ray(this->GetTransform().GetPosition(), (pO->GetTransform().GetPosition() - this->GetTransform().GetPosition()).Normalised());
 
 			RayCollision closestCollision;
-			std::vector<int> ignoreList = { LAYER_ENEMY };
+			std::vector<int> ignoreList = { LAYER_ENEMY, LAYER_ITEM };
 			if (gameWorld->Raycast(ray, closestCollision, true, nullptr, ignoreList))
 			{
 				GameObject* selectionObject = (GameObject*)closestCollision.node;

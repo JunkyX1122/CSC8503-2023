@@ -4,6 +4,7 @@ const int LAYER_DEFAULT = 0;
 const int LAYER_TERRAIN = 1;
 const int LAYER_PLAYER = 2;
 const int LAYER_ENEMY = 3;
+const int LAYER_ITEM = 4;
 
 namespace NCL {
 	enum class VolumeType {
