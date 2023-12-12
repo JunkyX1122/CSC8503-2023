@@ -59,9 +59,30 @@ namespace NCL {
 			}
 
 			std::vector<GameObject*> GetAllObjects() { return gameObjects; }
-
+			std::vector<GameObject*> GetAllObjectsForNetworkUpdating() { return gameObjectNetworkUpdateList; }
+			void ResetObjectNetworkUpdateList() { 
+				gameObjectNetworkUpdateList.clear();
+				gameObjectsToUpdate.clear();
+				for (auto gO : gameObjects)
+				{
+					if (gO->GetNetworkObject())
+					{
+						gameObjectNetworkUpdateList.push_back(gO);
+						gameObjectsToUpdate.push_back(gO);
+						
+					}
+				}
+				
+			}
+			void RemoveFromNetworkUpdateList(int i)
+			{
+				gameObjectNetworkUpdateList.erase(gameObjectNetworkUpdateList.begin() + i);
+			}
+			std::vector<GameObject*> GetToUpdateList() { return gameObjectsToUpdate; }
 		protected:
 			std::vector<GameObject*> gameObjects;
+			std::vector<GameObject*> gameObjectNetworkUpdateList;
+			std::vector<GameObject*> gameObjectsToUpdate;
 			std::vector<Constraint*> constraints;
 
 			PerspectiveCamera mainCamera;

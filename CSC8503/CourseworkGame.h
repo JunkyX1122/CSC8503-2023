@@ -129,14 +129,17 @@ namespace NCL {
 
 			std::map<int, PlayerObject*> playerObject = {};
 			std::map<int, GameObject*> playerGroundedCollider = {};
+			std::map<int, Vector3*> playerCameraPosition = {};
 			std::map<int, Quaternion*> playerCameraRotation = {};
 			std::map<int, char[8]> playerInputs = {};
 			std::map<int, Quaternion> playerRotation = {};
+			std::map<int, Vector3> playerCameraOffsetPosition = {};
 			int selfClientID = 0;
 			// NETWORKING
 
 			GameServer* gameServer = nullptr;
 			int numberOfActivePlayers = -1;
+			int activePlayers[4] = { 0,0,0,0 };
 			GameClient* gameClient = nullptr;
 			void BroadcastSnapshot(bool deltaFrame);
 			

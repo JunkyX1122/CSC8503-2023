@@ -106,6 +106,8 @@ namespace NCL::CSC8503 {
 			return ignoreList;
 		}
 
+		void SetPositionToDampenTo(Vector3 v) { positionToDampenTo = v; }
+		Vector3 GetPositionToDampenTo() { return positionToDampenTo; }
 	protected:
 		Transform			transform;
 
@@ -120,7 +122,7 @@ namespace NCL::CSC8503 {
 		std::string	name;
 
 		Vector3 broadphaseAABB;
-
+		Vector3 positionToDampenTo;
 		std::vector<GameObject*> ignoreList = std::vector<GameObject*>{};
 	};
 
@@ -136,10 +138,16 @@ namespace NCL::CSC8503 {
 		void SetGrappling(bool b) { isGrappling = b; }
 		Vector3 GetRespawnPoint() { return respawnPoint; }
 		void SetRespawnPoint(Vector3 v) { respawnPoint = v; }
+		float GetDashTimer() { return dashTimer; }
+		void SetDashTimer(float i) { dashTimer = i; }
+		float GetJumpTimer() { return jumpTimer; }
+		void SetJumpTimer(float i) { jumpTimer = i; }
 	protected:
 		bool isGrappling;
 		Vector3 grapplePoint;
 		Vector3 respawnPoint;
+		float dashTimer = 0;
+		float jumpTimer = 0;
 	};
 }
 

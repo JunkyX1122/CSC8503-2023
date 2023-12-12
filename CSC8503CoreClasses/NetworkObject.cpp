@@ -68,13 +68,12 @@ bool NetworkObject::ReadFullPacket(FullPacket &p)
 	{
 		return false;
 	}
-
 	if (p.objectID != object.GetNetworkObject()->GetNetworkID()) return false;
 
 	lastFullState = p.fullState;
 	//std::cout << p.fullState.position << "\n";
 	//std::cout << lastFullState.position << "\n";
-	object.GetTransform().SetPosition(lastFullState.position);
+	object.SetPositionToDampenTo(lastFullState.position);
 	object.GetTransform().SetOrientation(lastFullState.orientation);
 
 	
