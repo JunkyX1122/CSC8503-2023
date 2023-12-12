@@ -364,19 +364,23 @@ void PhysicsSystem::NarrowPhase()
 		i++)
 	{
 		CollisionDetection::CollisionInfo info = *i;
-		if (CollisionDetection::ObjectIntersection(info.a, info.b, info))
+		if ((info.a)->GetPhysicsObject()->GetInverseMass() + (info.b)->GetPhysicsObject()->GetInverseMass() > 0)
 		{
-			(info.a)->SetColliding(true);
-			(info.b)->SetColliding(true);
-			(info.a)->AddToCollidingList(info.b);
-			(info.b)->AddToCollidingList(info.a);
-			info.framesLeft = numCollisionFrames;
-			if ((info.a)->GetBoundingVolume()->isCollidable && (info.b)->GetBoundingVolume()->isCollidable)
+			if (CollisionDetection::ObjectIntersection(info.a, info.b, info))
 			{
-				ImpulseResolveCollision(*info.a, *info.b, info.point);
+				(info.a)->SetColliding(true);
+				(info.b)->SetColliding(true);
+				(info.a)->AddToCollidingList(info.b);
+				(info.b)->AddToCollidingList(info.a);
+				info.framesLeft = numCollisionFrames;
+
+				if ((info.a)->GetBoundingVolume()->isCollidable && (info.b)->GetBoundingVolume()->isCollidable)
+				{
+					ImpulseResolveCollision(*info.a, *info.b, info.point);
+				}
+
+				allCollisions.insert(info);
 			}
-			
-			allCollisions.insert(info);
 		}
 	}
 }

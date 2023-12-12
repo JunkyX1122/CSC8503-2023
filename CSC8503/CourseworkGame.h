@@ -155,6 +155,8 @@ namespace NCL {
 			int activePlayers[4] = { 0,0,0,0 };
 			GameClient* gameClient = nullptr;
 			float clientConnectionTimer = 3.0f;
+
+			GameObject* itemCollectionZone;
 			void BroadcastSnapshot(bool deltaFrame);
 			
 			void OnPlayerConnect(int peerID);

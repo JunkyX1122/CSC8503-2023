@@ -75,6 +75,7 @@ void CourseworkGame::EraseWorld()
 	playerCameraOffsetPosition.clear();
 	enemyObjects.clear();
 	bonusObjects.clear();
+	itemCollectionZone = nullptr;
 }
 void CourseworkGame::InitialiseAssets()
 {
@@ -242,31 +243,53 @@ void CourseworkGame::UpdateBonusObjects(float dt)
 {
 	for (BonusObject* item : bonusObjects)
 	{
-		for (GameObject* collidingWith : item->GetCollidingList())
+		if (!item->IsAtHome())
 		{
-			if (collidingWith->GetName() == "Player")
+			for (GameObject* collidingWith : item->GetCollidingList())
 			{
-				PlayerObject* currentPlayer = (PlayerObject*)collidingWith;
-				if (item->GetCollectedBy())
+				if (collidingWith->GetName() == "Player")
 				{
-					PlayerObject* stolenFrom = (PlayerObject*)item->GetCollectedBy();
-					stolenFrom->RemoveItemCollected(item->GetItemID());
+					PlayerObject* currentPlayer = (PlayerObject*)collidingWith;
+					if (item->GetCollectedBy())
+					{
+						PlayerObject* stolenFrom = (PlayerObject*)item->GetCollectedBy();
+						stolenFrom->RemoveItemCollected(item->GetItemID());
+					}
+					item->SetCollectedBy(currentPlayer);
+					currentPlayer->AddToItemCollected(item->GetItemID(), item);
+					//currentPlayer->SetScore(currentPlayer->GetScore()+1);
 				}
-				item->SetCollectedBy(currentPlayer);
-				currentPlayer->AddToItemCollected(item->GetItemID(), item);
-				//currentPlayer->SetScore(currentPlayer->GetScore()+1);
+				else if (collidingWith->GetName() == "Home")
+				{
+					item->SetIsAtHome(true);
+				}
 			}
 		}
 	}
 	for (auto pO : playerObject)
 	{
 		int numItems = 0;
+		std::map<int, GameObject*> tempList = pO.second->GetItemsCollected();
 		for (auto iO : pO.second->GetItemsCollected())
 		{
 			iO.second->GetTransform().SetPosition(pO.second->GetTransform().GetPosition() + Vector3(0, 7.5f + 10.0f * numItems, 0));
 			iO.second->GetPhysicsObject()->SetLinearVelocity(Vector3(0, 0, 0));
+
+			if (iO.second->GetName() == "Item")
+			{
+				BonusObject* itemObject = (BonusObject*)iO.second;
+				if (itemObject->IsAtHome())
+				{
+					tempList.erase(iO.first);
+					itemObject->GetRenderObject()->~RenderObject();
+					itemObject->GetTransform().SetPosition(Vector3(-99,-99,-99));
+					pO.second->SetScore(pO.second->GetScore() + itemObject->GetValue());
+					
+				}
+			}
 			numItems++;
 		}
+		pO.second->SetItemsCollected(tempList);
 	}
 }
 void CourseworkGame::DisconnectAsServer()
@@ -732,7 +755,7 @@ void CourseworkGame::MovePlayerObject(float dt, PlayerObject* pO, int playerID)
 		Ray ray = CollisionDetection::BuildRayFromCentre(world->GetMainCamera());
 		
 		RayCollision closestCollision;
-		std::vector<int> ignoreList = { LAYER_PLAYER, LAYER_ITEM };
+		std::vector<int> ignoreList = { LAYER_PLAYER, LAYER_ITEM, LAYER_TRIGGER };
 
 		if (world->Raycast(ray, closestCollision, true, nullptr, ignoreList))
 		{
@@ -897,6 +920,8 @@ void CourseworkGame::InitWorld() {
 		enemyObjects.push_back(AddEnemyToWorld(Vector3(38 * 20, 10, (1 + i * 3) * 20)));
 	}
 	GenerateItems();
+	itemCollectionZone = AddCubeToWorld(Vector3(20 * 9.5, 20 * 1, 20 * 9.5), Vector3(3, 1, 2) * 20, 0, LAYER_TRIGGER, false, false);
+	itemCollectionZone->SetName("Home");
 	world->ResetObjectNetworkUpdateList();
 	
 	
@@ -1160,7 +1185,7 @@ EnemyObject* CourseworkGame::AddEnemyToWorld(const Vector3& position) {
 BonusObject* CourseworkGame::AddBonusToWorld(const Vector3& position, int type) {
 	BonusObject* apple = new BonusObject();
 	apple->SetName("Item");
-
+	apple->SetValue(10 + 10 * type);
 	SphereVolume* volume = new SphereVolume(3.5f, LAYER_ITEM);
 	apple->SetBoundingVolume((CollisionVolume*)volume);
 	apple->GetTransform()
@@ -1172,6 +1197,7 @@ BonusObject* CourseworkGame::AddBonusToWorld(const Vector3& position, int type) 
 		apple->AddToIgnoreList(eO);
 	}
 	apple->SetRenderObject(new RenderObject(&apple->GetTransform(), bonusMesh, nullptr, basicShader));
+	apple->GetRenderObject()->SetColour(Vector4(0.6f,0.1f,0,1.0f) * (1.0f - 1.0f / 9.0f * type) + Vector4(1.0f,0.8f,0,1.0f) * (1.0f / 9.0f * type));
 	apple->SetPhysicsObject(new PhysicsObject(&apple->GetTransform(), apple->GetBoundingVolume()));
 	int id = 3000 + bonusObjects.size();
 	apple->SetNetworkObject(new NetworkObject(*apple, id));

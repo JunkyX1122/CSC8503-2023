@@ -23,6 +23,7 @@ namespace NCL::CSC8503 {
 			return boundingVolume;
 		}
 
+		void SetActive(bool b) { isActive = b; }
 		bool IsActive() const {
 			return isActive;
 		}
@@ -129,7 +130,7 @@ namespace NCL::CSC8503 {
 		RenderObject*		renderObject;
 		NetworkObject*		networkObject;
 
-		bool		isActive;
+		bool		isActive = true;
 		int			worldID;
 		bool isColliding;
 		std::string	name;
@@ -179,9 +180,15 @@ namespace NCL::CSC8503 {
 		GameObject* GetCollectedBy() { return collectedBy; }
 		void SetItemID(int i) { itemID = i; }
 		int GetItemID() { return itemID; }
+		void SetIsAtHome(bool b) { isAtHome = b; }
+		bool IsAtHome() { return isAtHome; }
+		void SetValue(int i) { value = i; }
+		int GetValue() { return value; }
 	protected:
 		GameObject* collectedBy = nullptr;
 		int itemID = 0;
+		bool isAtHome = false;
+		int value = 1;
 	};
 }
 
