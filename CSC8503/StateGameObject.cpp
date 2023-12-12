@@ -46,6 +46,7 @@ EnemyObject::EnemyObject(LevelData* l, GameWorld* g, const std::string& n)
 	gameWorld = g;
 	navigationGridFile = l->GetNavigationFile();
 	name = n;
+	moveSpeed = 0.0f;
 	State* Wandering = new State([&](float dt)->void
 		{
 			if (levelData)

@@ -67,8 +67,8 @@ void CourseworkGame::InitialiseGameAsServer()
 	std::cout << "Started World As Server\n";
 	InitialiseAssets();
 	
-	world->GetMainCamera().SetPosition(Vector3(20 * 8, 10, 20 * 9));
-
+	world->GetMainCamera().SetPosition(Vector3(20 * 8, 350, 20 * 9));
+	world->GetMainCamera().SetPitch(-70.0f);
 	NetworkBase::Initialise();
 	int port = NetworkBase::GetDefaultPort();
 	gameServer = new GameServer(port, 4, [&](int peerId) { OnPlayerConnect(peerId); }, [&](int peerId) { OnPlayerDisconnect(peerId); });
@@ -475,10 +475,12 @@ void CourseworkGame::UpdateOuter(float dt)
 }
 void CourseworkGame::UpdatePathFindings(float dt)
 {
+	
 	for (EnemyObject* enemy : enemyObjects)
 	{
-		if(enemy->GetStateMachine()) enemy->GetStateMachine()->Update(dt);
+		if (enemy->GetStateMachine()) enemy->GetStateMachine()->Update(dt);
 	}
+	
 }
 
 void CourseworkGame::UpdateKeys() 
@@ -812,11 +814,12 @@ void CourseworkGame::InitWorld() {
 			enemyObjects.push_back(AddEnemyToWorld(Vector3(18 * 20, 10, (1 + i * 3) * 20)));
 		}
 		world->ResetObjectNetworkUpdateList();
+		
 	}
 	else
 	{
 		InitMixedGridWorld(15, 15, 3.5f, 3.5f);
-		BridgeConstraintTest();
+		//BridgeConstraintTest();
 		InitDefaultFloor();
 	}
 	
@@ -841,6 +844,9 @@ void CourseworkGame::GenerateLevel()
 	levelData = new LevelData("TestGrid1.txt");
 	int nodeSize = levelData->GetNodeSize();
 	float nodeHeight = nodeSize * 0.25f;
+	Vector3 startPos;
+	Vector3 endPos;
+	int bridgeEndCount = 0;
 	for (int i = 0; i < levelData->GetGridSize(); i++)
 	{
 		LevelGridUnit lgu = levelData->GetAllGridUnits()[i];
@@ -848,7 +854,28 @@ void CourseworkGame::GenerateLevel()
 		if (isdigit(type))
 		{
 			float unitHeight = nodeHeight * (float(type) - 48);
-			AddCubeToWorld(lgu.position + Vector3(0, unitHeight,0), Vector3(1 * nodeSize / 2, unitHeight, 1 * nodeSize / 2) , 0);
+			Vector3 cubePosition = lgu.position + Vector3(0, unitHeight, 0);
+			AddCubeToWorld(cubePosition, Vector3(1 * nodeSize / 2, unitHeight, 1 * nodeSize / 2) , 0);
+			if ((float(type) - 48) == 8)
+			{
+				switch (bridgeEndCount)
+				{
+				case(0):
+					startPos = cubePosition;
+					break;
+				case(1):
+					endPos = cubePosition;
+					break;
+				}
+				bridgeEndCount++;
+			}
+		}
+		if (bridgeEndCount == 2)
+		{
+			AddCubeToWorld(startPos + Vector3(0, startPos.y * 1.5f, 0), Vector3(1 * nodeSize / 8, nodeHeight * 8 * 0.5f, 1 * nodeSize / 8), 0);
+			AddCubeToWorld(endPos + Vector3(0, endPos.y * 1.5f, 0), Vector3(1 * nodeSize / 8, nodeHeight * 8 * 0.5f, 1 * nodeSize / 8), 0);
+			BridgeConstraintTest(startPos+ Vector3(0, startPos.y * 2, 0), endPos+ Vector3(0, endPos.y * 2, 0));
+			bridgeEndCount = 0;
 		}
 	}
 	AddFloorToWorld(Vector3(levelData->GetGridDimentions().x / 2, -0.25, levelData->GetGridDimentions().y / 2) * nodeSize - Vector3(1 * nodeSize / 2, 0, 1 * nodeSize / 2)
@@ -1015,11 +1042,13 @@ EnemyObject* CourseworkGame::AddEnemyToWorld(const Vector3& position) {
 
 	character->SetRenderObject(new RenderObject(&character->GetTransform(), enemyMesh, nullptr, basicShader));
 	character->SetPhysicsObject(new PhysicsObject(&character->GetTransform(), character->GetBoundingVolume()));
+	
 	character->SetNetworkObject(new NetworkObject(*character, 1000+enemyObjects.size()));
 
 	character->GetPhysicsObject()->SetInverseMass(inverseMass);
 	character->GetPhysicsObject()->InitSphereInertia();
 	
+	character->GetPhysicsObject()->ClearForces();
 	world->AddGameObject(character);
 
 	return character;
@@ -1203,27 +1232,28 @@ void CourseworkGame::MoveSelectedObject() {
 	}
 }
 
-void CourseworkGame::BridgeConstraintTest() 
+void CourseworkGame::BridgeConstraintTest(Vector3 startPos, Vector3 endPos)
 {
 	std::cout << "THE BRIDGE\n";
-	Vector3 cubeSize = Vector3(3, 3, 3);
+	Vector3 cubeSize = Vector3(6, 3, 12);
 	
 	float invCubeMass = 5;
 	int numLinks = 20;
 	float maxDistance = 15; 
 	float cubeDistance = 10; 
 	
-	Vector3 startPos = Vector3(100, 100, 100);
 	
 	GameObject * start = AddCubeToWorld(startPos + Vector3(0, 0, 0), cubeSize, 0);
-	GameObject * end = AddCubeToWorld(startPos + Vector3((numLinks + 2) * cubeDistance, 0, 0), cubeSize, 0);
-	
+	start->SetNetworkObject(new NetworkObject(*start, 2000));
+	GameObject * end = AddCubeToWorld(endPos, cubeSize, 0);
+	end->SetNetworkObject(new NetworkObject(*end, 2001));
 	GameObject * previous = start;
 	
 	for (int i = 0; i < numLinks; ++i) 
 	{
 		//Debug::DrawLine(Vector3(0, 0, 0), startPos + Vector3((i + 1) * cubeDistance, 0, 0), Vector4(0, 0, 1, 1),100.0f);
 		GameObject * block = AddCubeToWorld(startPos + Vector3((i + 1) * cubeDistance, 0, 0), cubeSize, invCubeMass);
+		block->SetNetworkObject(new NetworkObject(*block, 2002+i));
 		PositionConstraint * constraint = new PositionConstraint(previous, block, maxDistance);
 		world->AddConstraint(constraint);
 		previous = block;
