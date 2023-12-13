@@ -27,7 +27,7 @@ class IntroScreen : public PushdownState
 				(selectedOption == 0 ? 
 					Vector4(0.25, 0.25, 0.25, 1) : Vector4(0.05, 0.05, 0.05,1)));
 		}
-		if (Window::GetKeyboard()->KeyPressed(KeyCodes::UP))
+		if (Window::GetKeyboard()->KeyPressed(KeyCodes::W))
 		{
 			switch(menuSelect)
 			{
@@ -42,7 +42,7 @@ class IntroScreen : public PushdownState
 					break;
 			}
 		}
-		if (Window::GetKeyboard()->KeyPressed(KeyCodes::DOWN))
+		if (Window::GetKeyboard()->KeyPressed(KeyCodes::S))
 		{
 			switch (menuSelect)
 			{
@@ -56,12 +56,12 @@ class IntroScreen : public PushdownState
 			}
 		}
 
-		if (Window::GetKeyboard()->KeyPressed(KeyCodes::LEFT) && selectedOption == 0)
+		if (Window::GetKeyboard()->KeyPressed(KeyCodes::A) && selectedOption == 0)
 		{
 			menuSelect--;
 			if (menuSelect < 0) menuSelect = 1;
 		}
-		if (Window::GetKeyboard()->KeyPressed(KeyCodes::RIGHT) && selectedOption == 0)
+		if (Window::GetKeyboard()->KeyPressed(KeyCodes::D) && selectedOption == 0)
 		{
 			menuSelect = (menuSelect + 1) % 2;
 		}

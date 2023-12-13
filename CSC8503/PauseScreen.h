@@ -15,12 +15,12 @@ class PauseScreen : public PushdownState
 			bool selected = selectedOption == i;
 			Debug::Print((selected ? "> " : "") + options[i], Vector2(5, 15 + 5 * i), selected ? Vector4(0, 1, 0, 1) : Vector4(0.2,0.2,0.2, 1));
 		}
-		if (Window::GetKeyboard()->KeyPressed(KeyCodes::UP))
+		if (Window::GetKeyboard()->KeyPressed(KeyCodes::W))
 		{
 			selectedOption--;
 			if (selectedOption < 0) selectedOption = options.size() - 1;
 		}
-		if (Window::GetKeyboard()->KeyPressed(KeyCodes::DOWN))
+		if (Window::GetKeyboard()->KeyPressed(KeyCodes::S))
 		{
 			selectedOption = (selectedOption + 1) % options.size();
 		}
