@@ -93,6 +93,7 @@ void CourseworkGame::InitialiseAssets()
 
 	basicTex = renderer->LoadTexture("checkerboard.png");
 	groundTex = renderer->LoadTexture("Dirty_Grass_DIFF.png");
+	mostValuableTex = renderer->LoadTexture("OIP.png");
 	basicShader = renderer->LoadShader("scene.vert", "scene.frag");
 }
 
@@ -117,7 +118,7 @@ void CourseworkGame::OnPlayerConnect(int peerID)
 	std::cout << "Player ID " << peerID << " has connected!\n";
 	playerObject[peerID]->SetAssigned(true);
 	playerObject[peerID]->SetActive(true);
-	playerState[peerID] = GAME_ACTIVE ? PLAYER_PLAYING : PLAYER_NOTREADY;
+	playerState[peerID] = gameState == GAME_ACTIVE ? PLAYER_PLAYING : PLAYER_NOTREADY;
 	gameTimer = gameState == GAME_ACTIVE ? GAME_TIMELIMIT : GAME_JOIN_TIMER;
 	numberOfActivePlayers++;
 }
@@ -1082,14 +1083,14 @@ void CourseworkGame::InitWorld() {
 
 void CourseworkGame::InitialisePlayerAsServer(int playerID)
 {
-	playerObject.insert({ playerID, AddPlayerToWorld(playerID, Vector3(20 * 8 + 15 * playerID, 5, 20 * 9)) });
+	playerObject.insert({ playerID, AddPlayerToWorld(playerID, Vector3(20 * 8 + 5 * playerID, 5, 20 * 9)) });
 	playerState.insert({playerID, PLAYER_INACTIVE});
 	playerGroundedCollider.insert({ playerID, AddSphereToWorld(playerObject[playerID]->GetTransform().GetPosition(), 1.0f, 0.1f, LAYER_DEFAULT, false, false) });
 	playerGroundedCollider[playerID]->AddToIgnoreList(playerObject[playerID]);
 }
 void CourseworkGame::InitialisePlayerAsClient(int playerID)
 {
-	playerObject.insert({playerID, AddPlayerToWorld(playerID, Vector3(20 * 8 + 15 * playerID, 5, 20 * 9))});
+	playerObject.insert({playerID, AddPlayerToWorld(playerID, Vector3(20 * 8 + 5 * playerID, 5, 20 * 9))});
 	playerState.insert({ playerID, PLAYER_INACTIVE });
 	playerGroundedCollider.insert({ playerID, AddSphereToWorld(playerObject[playerID]->GetTransform().GetPosition(), 1.0f, 0.1f, LAYER_DEFAULT, false, false)});
 	playerGroundedCollider[playerID]->AddToIgnoreList(playerObject[playerID]);
@@ -1346,20 +1347,21 @@ EnemyObject* CourseworkGame::AddEnemyToWorld(const Vector3& position) {
 
 BonusObject* CourseworkGame::AddBonusToWorld(const Vector3& position, int type) {
 	BonusObject* apple = new BonusObject();
+	bool mostValuableBool = type == 9;
 	apple->SetName("Item");
-	apple->SetValue(10 + 10 * type);
+	apple->SetValue(mostValuableBool ? 200 : 10 + 10 * type);
 	SphereVolume* volume = new SphereVolume(3.5f, LAYER_ITEM);
 	apple->SetBoundingVolume((CollisionVolume*)volume);
 	apple->GetTransform()
-		.SetScale(Vector3(2, 2, 2))
+		.SetScale(mostValuableBool ? Vector3 (6,6,6) : Vector3(2, 2, 2))
 		.SetPosition(position);
 	apple->SetInitialPosition(position);
 	for (auto eO : enemyObjects)
 	{
 		apple->AddToIgnoreList(eO);
 	}
-	apple->SetRenderObject(new RenderObject(&apple->GetTransform(), bonusMesh, nullptr, basicShader));
-	apple->GetRenderObject()->SetColour(Vector4(0.6f,0.1f,0,1.0f) * (1.0f - 1.0f / 9.0f * type) + Vector4(1.0f,0.8f,0,1.0f) * (1.0f / 9.0f * type));
+	apple->SetRenderObject(new RenderObject(&apple->GetTransform(), mostValuableBool ? cubeMesh : bonusMesh, mostValuableBool ? mostValuableTex : nullptr, basicShader));
+	apple->GetRenderObject()->SetColour(mostValuableBool ? Vector4(1,1,1,1) : (Vector4(0.6f, 0.1f, 0, 1.0f) * (1.0f - 1.0f / 9.0f * type) + Vector4(1.0f, 0.8f, 0, 1.0f) * (1.0f / 9.0f * type)));
 	apple->SetPhysicsObject(new PhysicsObject(&apple->GetTransform(), apple->GetBoundingVolume()));
 	int id = 3000 + bonusObjects.size();
 	apple->SetNetworkObject(new NetworkObject(*apple, id));

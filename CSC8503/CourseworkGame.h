@@ -108,8 +108,9 @@ namespace NCL {
 			Mesh*	cubeMesh	= nullptr;
 			Mesh*	sphereMesh	= nullptr;
 
-			Texture*	basicTex	= nullptr;
-			Texture*	groundTex   = nullptr;
+			Texture*		basicTex	= nullptr;
+			Texture*		groundTex   = nullptr;
+			Texture*	mostValuableTex = nullptr;
 			Shader*		basicShader = nullptr;
 
 			//Coursework Meshes
