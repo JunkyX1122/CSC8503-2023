@@ -403,7 +403,7 @@ void PhysicsSystem::IntegrateAccel(float dt)
 	for (auto i = first; i != last; i++)
 	{
 		PhysicsObject* object = (*i)->GetPhysicsObject();
-		if (object == nullptr) continue;
+		if (object == nullptr || !(*i)->IsActive()) continue;
 
 		float inverseMass = object->GetInverseMass();
 
@@ -446,7 +446,7 @@ void PhysicsSystem::IntegrateVelocity(float dt)
 	for (auto i = first; i != last; i++)
 	{
 		PhysicsObject* object = (*i)->GetPhysicsObject();
-		if (object == nullptr) continue;
+		if (object == nullptr || !(*i)->IsActive()) continue;
 
 		Transform& transform = (*i)->GetTransform();
 

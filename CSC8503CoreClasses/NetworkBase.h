@@ -16,6 +16,7 @@ enum BasicNetworkMessages {
 	Player_Disconnected,
 	Shutdown,
 	Player_Info,
+	GlobalPlayer_Info,
 	Player_DrawLine
 };
 

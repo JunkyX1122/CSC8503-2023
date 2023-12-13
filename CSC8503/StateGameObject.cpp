@@ -36,10 +36,6 @@ void StateGameObject::MoveRight(float dt)
 	counter -= dt;
 }
 
-
-
-
-
 EnemyObject::EnemyObject(LevelData* l, GameWorld* g, const std::string& n)
 {
 	levelData = l;
@@ -158,6 +154,11 @@ bool EnemyObject::CanSeePlayer()
 		vector<GameObject*> visiblePlayers;
 		for (auto pO : playerObjects)
 		{
+			if (typeid(*pO) == typeid(PlayerObject))
+			{
+				PlayerObject* objectAsPlayer = (PlayerObject*)pO;
+				if (!objectAsPlayer->IsAssigned()) continue;
+			}
 			Ray ray(this->GetTransform().GetPosition(), (pO->GetTransform().GetPosition() - this->GetTransform().GetPosition()).Normalised());
 
 			RayCollision closestCollision;

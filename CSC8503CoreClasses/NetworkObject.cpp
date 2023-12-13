@@ -75,7 +75,7 @@ bool NetworkObject::ReadFullPacket(FullPacket &p)
 	//std::cout << lastFullState.position << "\n";
 	object.SetPositionToDampenTo(lastFullState.position);
 	object.GetTransform().SetOrientation(lastFullState.orientation);
-
+	object.SetActive(lastFullState.isEnabled);
 	
 
 	stateHistory.emplace_back(lastFullState);
@@ -114,6 +114,7 @@ bool NetworkObject::WriteFullPacket(GamePacket**p)
 {
 	FullPacket* fp = new FullPacket();
 	
+	fp->fullState.isEnabled = object.IsActive();
 	fp->objectID = networkID;
 	fp->fullState.position = object.GetTransform().GetPosition();
 	//std::cout << fp->fullState.position << "\n";

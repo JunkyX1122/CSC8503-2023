@@ -9,6 +9,7 @@ namespace NCL {
 			NetworkState();
 			virtual ~NetworkState();
 
+			bool		isEnabled;
 			Vector3		position;
 			Quaternion	orientation;
 			int			stateID;

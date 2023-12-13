@@ -10,7 +10,22 @@
 //5 = F
 //6 = LeftMouse
 //7 = RightMouse
+#define MAX_CLIENTS 4
 
+enum GameState
+{
+	GAME_NOTSTARTED,
+	GAME_WAITINGFORPLAYERS,
+	GAME_ACTIVE
+};
+enum PlayerState
+{
+	PLAYER_INACTIVE,
+	PLAYER_NOTREADY,
+	PLAYER_READY,
+	PLAYER_PLAYING,
+	PLAYER_END
+};
 namespace NCL::CSC8503 {
 	class GameObject;
 
@@ -56,19 +71,33 @@ namespace NCL::CSC8503 {
 		}
 	};
 
-	struct PlayerInfoPacket : public GamePacket {
+	struct PlayerInfoPacket : public GamePacket 
+	{
 		int		yourAssignedObject;
 		int		score;
-		int		leader;
-		int		leaderScore;
 		float	dashTimer;
+		float	gameTimer;
+		GameState gameState;
 		PlayerInfoPacket() {
 			type = Player_Info;
 			size = sizeof(PlayerInfoPacket);
 		}
 	};
 
-	struct PlayerDrawLinePacket : public GamePacket {
+	struct GlobalPlayerInfoPacket : GamePacket
+	{
+		int		leader;
+		int		leaderScore;
+		int		playerIDs[MAX_CLIENTS];
+		PlayerState playerStates[MAX_CLIENTS];
+		GlobalPlayerInfoPacket() 
+		{
+			type = GlobalPlayer_Info;
+			size = sizeof(GlobalPlayerInfoPacket);
+		}
+	};
+	struct PlayerDrawLinePacket : public GamePacket 
+	{
 		char lineDrawType; // g - Grapple
 		bool doDraw;
 		int grapplePlayerID = -1;

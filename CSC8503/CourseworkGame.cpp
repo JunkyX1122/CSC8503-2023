@@ -14,21 +14,26 @@
 using namespace NCL;
 using namespace CSC8503;
 
-int BUTTON_SPACE = 0;
-int BUTTON_W = 1;
-int BUTTON_A = 2;
-int BUTTON_S = 3;
-int BUTTON_D = 4;
-int BUTTON_F = 5;
-int MOUSE_LEFT = 6;
-int MOUSE_RIGHT = 7;
+const int BUTTON_SPACE = 0;
+const int BUTTON_W = 1;
+const int BUTTON_A = 2;
+const int BUTTON_S = 3;
+const int BUTTON_D = 4;
+const int BUTTON_F = 5;
+const int MOUSE_LEFT = 6;
+const int MOUSE_RIGHT = 7;
 
-char IS_UP = '0';
-char IS_PRESSED = '1';
-char IS_DOWN = '2';
+const char IS_UP = '0';
+const char IS_PRESSED = '1';
+const char IS_DOWN = '2';
 
-float SERVER_CONNECTION_TIMELIMIT = 0.5f;
-float CONNECTION_TIMEOUT = 5.0f;
+const float SERVER_CONNECTION_TIMELIMIT = 0.5f;
+const float CONNECTION_TIMEOUT = 5.0f;
+
+const float GAME_TIMELIMIT = 60.0f * 3;
+const float GAME_JOIN_TIMER = 10.0f;
+
+
 CourseworkGame::CourseworkGame() : controller(*Window::GetWindow()->GetKeyboard(), *Window::GetWindow()->GetMouse()) {
 	world		= new GameWorld();
 #ifdef USEVULKAN
@@ -91,18 +96,16 @@ void CourseworkGame::InitialiseAssets()
 	basicShader = renderer->LoadShader("scene.vert", "scene.frag");
 }
 
-
-
 void CourseworkGame::InitialiseGameAsServer()
 {
 	std::cout << "Started World As Server\n";
 	InitialiseAssets();
-	
+	gameState = GAME_WAITINGFORPLAYERS;
 	world->GetMainCamera().SetPosition(Vector3(20 * 8, 350, 20 * 20));
 	world->GetMainCamera().SetPitch(-70.0f);
 	NetworkBase::Initialise();
 	int port = NetworkBase::GetDefaultPort();
-	gameServer = new GameServer(port, 4, [&](int peerId) { OnPlayerConnect(peerId); }, [&](int peerId) { OnPlayerDisconnect(peerId); });
+	gameServer = new GameServer(port, MAX_CLIENTS, [&](int peerId) { OnPlayerConnect(peerId); }, [&](int peerId) { OnPlayerDisconnect(peerId); });
 	
 	gameServer->RegisterPacketHandler(Received_State, this);
 
@@ -112,23 +115,36 @@ void CourseworkGame::InitialiseGameAsServer()
 void CourseworkGame::OnPlayerConnect(int peerID)
 {
 	std::cout << "Player ID " << peerID << " has connected!\n";
-	activePlayers[peerID] = 1;
+	playerObject[peerID]->SetAssigned(true);
+	playerObject[peerID]->SetActive(true);
+	playerState[peerID] = PLAYER_NOTREADY;
+	gameTimer = GAME_JOIN_TIMER;
+	numberOfActivePlayers++;
 }
 void CourseworkGame::OnPlayerDisconnect(int peerID)
 {
 	std::cout << "Player ID " << peerID << " has disconnected!\n";
-	activePlayers[peerID] = 0;
+	playerObject[peerID]->SetAssigned(false);
+	playerObject[peerID]->SetActive(false);
+	playerState[peerID] = PLAYER_INACTIVE;
+	gameTimer = GAME_JOIN_TIMER;
+	numberOfActivePlayers--;
 }
 void CourseworkGame::UpdateAsServer(float dt)
 {
-	UpdatePlayerInfos(dt);
+	UpdateServerPlayerInfos(dt);
 	gameServer->UpdateServer();
-	UpdatePlayerPhysics(dt);
-	world->GetMainCamera().UpdateCamera(dt);
-	UpdateKeys();
-	UpdatePathFindings(dt);
-	UpdateBonusObjects(dt);
+	UpdateGameState(dt);
+	UpdateServerPlayerPhysics(dt);
+	if (gameState==GAME_ACTIVE)
+	{
+		
+		//UpdateKeys();
+		UpdateServerPathFindings(dt);
+		UpdateServerBonusObjects(dt);
+	}
 
+	world->GetMainCamera().UpdateCamera(dt);
 
 
 	world->UpdateWorld(dt);
@@ -145,7 +161,41 @@ void CourseworkGame::UpdateAsServer(float dt)
 	//
 	//std::this_thread::sleep_for(std::chrono::milliseconds(10));
 }
-void CourseworkGame::UpdatePlayerInfos(float dt)
+void CourseworkGame::UpdateGameState(float dt)
+{
+	if (numberOfActivePlayers == 0) return;
+	if (gameState == GAME_ACTIVE)
+	{
+		gameTimer -= dt;
+	}
+	else
+	{
+		float timerScale = 1.0f;
+		for (auto player : playerInputs)
+		{
+			if (playerState[player.first] == PLAYER_READY)
+			{
+				timerScale += (1.0f / numberOfActivePlayers);
+				continue;
+			}
+			if (player.second[0] == IS_DOWN)
+			{
+				playerState[player.first] = PLAYER_READY;
+			}
+		}
+		if (gameTimer <= 0.0f)
+		{
+			gameState = GAME_ACTIVE;
+			gameTimer = GAME_TIMELIMIT;
+			for (auto pS : playerState)
+			{
+				playerState[pS.first] = PLAYER_PLAYING;
+			}
+		}
+		gameTimer -= dt * timerScale;
+	}
+}
+void CourseworkGame::UpdateServerPlayerInfos(float dt)
 {
 	leaderScore = 0;
 	leaderID = 0;
@@ -159,18 +209,39 @@ void CourseworkGame::UpdatePlayerInfos(float dt)
 	}
 	for (auto pO : playerObject)
 	{
+		if (playerState[pO.first] == PLAYER_INACTIVE) continue;
 		GamePacket* newPacket = nullptr;
 
 		PlayerInfoPacket* pp = new PlayerInfoPacket();
 
 		pp->yourAssignedObject = pO.first;
 		pp->score = pO.second->GetScore();
-		pp->leader = leaderID;
-		pp->leaderScore = leaderScore;
+		
 		pp->dashTimer = pO.second->GetDashTimer();
+		pp->gameTimer = gameTimer;
+		pp->gameState = gameState;
 		newPacket = pp;
 
 		gameServer->SendPacketToPeer(*newPacket, pO.first);
+		delete newPacket;
+
+	}
+	
+	for (auto pO : playerObject)
+	{
+		GamePacket* newPacket = nullptr;
+		GlobalPlayerInfoPacket* pp = new GlobalPlayerInfoPacket();
+		pp->leader = leaderID;
+		pp->leaderScore = leaderScore;
+		int i = 0;
+		for (auto pS : playerState)
+		{
+			pp->playerIDs[i] = pS.first;
+			pp->playerStates[i] = pS.second;
+			i++;
+		}
+		newPacket = pp;
+		gameServer->SendGlobalPacket(*newPacket);
 		delete newPacket;
 
 	}
@@ -200,7 +271,7 @@ void CourseworkGame::UpdatePlayerInfos(float dt)
 
 	}
 }
-void CourseworkGame::UpdatePlayerPhysics(float dt)
+void CourseworkGame::UpdateServerPlayerPhysics(float dt)
 {
 	Vector3 oldCamPosition = world->GetMainCamera().GetPosition();
 	float oldCamPitch = world->GetMainCamera().GetPitch();
@@ -209,7 +280,9 @@ void CourseworkGame::UpdatePlayerPhysics(float dt)
 	{
 		for (auto pO : playerObject)
 		{
-			if (activePlayers[pO.first] == 1)
+			AttachCameraPlayer(true, pO.second, pO.first);
+			//std::cout << playerState[pO.first];
+			if (playerState[pO.first] == PLAYER_PLAYING)
 			{
 				int playerID = pO.first;
 				Vector3 playerPos = pO.second->GetTransform().GetPosition();
@@ -229,9 +302,7 @@ void CourseworkGame::UpdatePlayerPhysics(float dt)
 					}
 					pO.second->ClearItemsCollected();
 				}
-				AttachCameraPlayer(true, pO.second, playerID);
 				MovePlayerObject(dt, pO.second, playerID);
-
 				if (pO.second && playerGroundedCollider[playerID])
 				{
 					playerGroundedCollider[playerID]->GetTransform().SetPosition(pO.second->GetTransform().GetPosition() + Vector3(0, -1.75f, 0));
@@ -243,14 +314,14 @@ void CourseworkGame::UpdatePlayerPhysics(float dt)
 	world->GetMainCamera().SetPitch(oldCamPitch);
 	world->GetMainCamera().SetYaw(oldCamYaw);
 }
-void CourseworkGame::UpdatePathFindings(float dt)
+void CourseworkGame::UpdateServerPathFindings(float dt)
 {
 	for (EnemyObject* enemy : enemyObjects)
 	{
 		if (enemy->GetStateMachine()) enemy->GetStateMachine()->Update(dt);
 	}
 }
-void CourseworkGame::UpdateBonusObjects(float dt)
+void CourseworkGame::UpdateServerBonusObjects(float dt)
 {
 	for (BonusObject* item : bonusObjects)
 	{
@@ -293,9 +364,9 @@ void CourseworkGame::UpdateBonusObjects(float dt)
 				{
 					tempList.erase(iO.first);
 					itemObject->GetRenderObject()->~RenderObject();
+					itemObject->SetActive(false);
 					itemObject->GetTransform().SetPosition(Vector3(-99,-99,-99));
 					pO.second->SetScore(pO.second->GetScore() + itemObject->GetValue());
-					
 				}
 			}
 			numItems++;
@@ -315,6 +386,7 @@ void CourseworkGame::InitialiseGameAsClient()
 {
 	std::cout << "Started World As Client\n";
 	InitialiseAssets();
+	gameState = GAME_WAITINGFORPLAYERS;
 	NetworkBase::Initialise();
 	int port = NetworkBase::GetDefaultPort();
 
@@ -324,6 +396,7 @@ void CourseworkGame::InitialiseGameAsClient()
 	gameClient->RegisterPacketHandler(Player_Connected, this);
 	gameClient->RegisterPacketHandler(Player_Disconnected, this);
 	gameClient->RegisterPacketHandler(Player_Info, this);
+	gameClient->RegisterPacketHandler(GlobalPlayer_Info, this);
 	gameClient->RegisterPacketHandler(Player_DrawLine, this);
 	bool canConnect = gameClient->Connect(127, 0, 0, 1, port);
 	connected = canConnect;
@@ -348,53 +421,16 @@ void CourseworkGame::UpdateAsClient(float dt)
 
 	if (gameClient)
 	{
+		
+		clientConnectionTimer -= dt;
+		world->ResetObjectNetworkUpdateList();
+		gameClient->UpdateClient();
 		if (clientConnectionTimer <= 0)
 		{
 			connected = false;
 			return;
 		}
-		clientConnectionTimer -= dt;
-		world->ResetObjectNetworkUpdateList();
-		gameClient->UpdateClient();
-		for (int o = 3; o >= 0; o--)
-		{
-			Vector2 offset = Vector2(0.15f, 0.15f) * o;
-
-			float darken = 0.7f;
-			Vector4 col1(1.0f * darken, 0.5f * darken, 0, 1);
-			Vector4 col2(0, 0.5f * darken, 1.0f * darken, 1);
-			Vector4 playerColor = (col1 * (1.0f / 3.0f * leaderID) + col2 * (1.0f - 1.0f / 3.0f * leaderID));
-
-			Vector4 color = Vector4(darken, darken, darken, 1.0f) * (1.0f - 1.0f / 2 * o);
-			Vector4 leaderColor = playerColor * (1.0f - 1.0f / 2 * o);
-			
-
-
-			Debug::Print("Score: " + std::to_string(selfScore), Vector2(2, 5) + offset, color);
-			Debug::Print("Leader (Player_" + std::to_string(leaderID) + "): " + std::to_string(leaderScore), Vector2(2, 10) + offset, leaderColor);
-			int dashNumber = (int)(floor(selfDashTimer * 3)) ;
-			std::string dashString = "Dash [";
-
-			Vector4 dashColor;
-			if (dashNumber > 0)
-			{
-				dashColor = Vector4(1.0f * darken, (1 - 1.0f/(5*3) * dashNumber) * darken, 0, 1);
-				for (int i = 0; i < dashNumber; i++)
-				{
-					dashString += "=";
-				}
-				dashString += "]";
-			}
-			else
-			{
-				dashColor = Vector4(0,1.0f * darken, 0, 1);
-				dashString += "READY!]";
-			}
-			dashColor *= (1.0f - 1.0f / 2 * o);
-			Debug::Print(dashString, Vector2(2, 90) + offset, dashColor);
-		}
-
-
+		UpdateClientUI(dt);
 		for (GameObject* objects : world->GetToUpdateList())
 		{
 			objects->GetTransform().SetPosition(objects->GetTransform().GetPosition() * (1.0f - 0.2f) + objects->GetPositionToDampenTo() * 0.2f);
@@ -410,6 +446,49 @@ void CourseworkGame::UpdateAsClient(float dt)
 		Debug::UpdateRenderables(dt);
 	}
 	//std::this_thread::sleep_for(std::chrono::milliseconds(10));
+}
+void CourseworkGame::UpdateClientUI(float dt)
+{
+	for (int o = 3; o >= 0; o--)
+	{
+		Vector2 offset = Vector2(0.15f, 0.15f) * o;
+
+		float darken = 0.7f;
+		Vector4 col1(1.0f * darken, 0.5f * darken, 0, 1);
+		Vector4 col2(0, 0.5f * darken, 1.0f * darken, 1);
+		Vector4 playerColor = (col1 * (1.0f / 3.0f * leaderID) + col2 * (1.0f - 1.0f / 3.0f * leaderID));
+
+		Vector4 color = Vector4(darken, darken, darken, 1.0f) * (1.0f - 1.0f / 2 * o);
+		Vector4 leaderColor = playerColor * (1.0f - 1.0f / 2 * o);
+
+
+
+		Debug::Print("Score: " + std::to_string(selfScore), Vector2(2, 5) + offset, color);
+		Debug::Print("Leader (Player_" + std::to_string(leaderID) + "): " + std::to_string(leaderScore), Vector2(2, 10) + offset, leaderColor);
+
+		Debug::Print("TIMER: " + std::to_string(gameTimer), Vector2(50, 5) + offset, color);
+
+		int dashNumber = (int)(floor(selfDashTimer * 3));
+		std::string dashString = "Dash [";
+
+		Vector4 dashColor;
+		if (dashNumber > 0)
+		{
+			dashColor = Vector4(1.0f * darken, (1 - 1.0f / (5 * 3) * dashNumber) * darken, 0, 1);
+			for (int i = 0; i < dashNumber; i++)
+			{
+				dashString += "=";
+			}
+			dashString += "]";
+		}
+		else
+		{
+			dashColor = Vector4(0, 1.0f * darken, 0, 1);
+			dashString += "READY!]";
+		}
+		dashColor *= (1.0f - 1.0f / 2 * o);
+		Debug::Print(dashString, Vector2(2, 90) + offset, dashColor);
+	}
 }
 void CourseworkGame::DisconnectAsClient()
 {
@@ -443,8 +522,6 @@ void CourseworkGame::UpdateGame(float dt)
 	//UpdateAsClient(dt);
 }
 
-
-
 void CourseworkGame::BroadcastSnapshot(bool deltaFrame) {
 	std::vector<GameObject*>::const_iterator first;
 	std::vector<GameObject*>::const_iterator last;
@@ -462,10 +539,10 @@ void CourseworkGame::BroadcastSnapshot(bool deltaFrame) {
 		//and an int could work, or it could be part of a 
 		//NetworkPlayer struct. 
 
-		int playerState = 0;
+		int playerStateNetwork = 0;
 		GamePacket* newPacket = nullptr;
 
-		if (o->WritePacket(&newPacket, deltaFrame, playerState)) 
+		if (o->WritePacket(&newPacket, deltaFrame, playerStateNetwork))
 		{
 			//std::cout << o->GetNetworkID() << "\n";
 			gameServer->SendGlobalPacket(*newPacket);
@@ -583,13 +660,26 @@ void CourseworkGame::ReceivePacket(int type, GamePacket* payload, int source)
 				//std::cout << infoPacket->yourAssignedObject << "\n";
 				selfClientID = infoPacket->yourAssignedObject;
 				selfScore = infoPacket->score;
-				leaderID = infoPacket->leader;
-				leaderScore = infoPacket->leaderScore;
 				selfDashTimer = infoPacket->dashTimer;
+				gameTimer = infoPacket->gameTimer;
+				gameState = infoPacket->gameState;
+
 				clientConnectionTimer = CONNECTION_TIMEOUT;
 			}
 			break;
 
+		case(BasicNetworkMessages::GlobalPlayer_Info):
+			{
+				GlobalPlayerInfoPacket* globalInfoPacket = (GlobalPlayerInfoPacket*)payload;
+				leaderID = globalInfoPacket->leader;
+				leaderScore = globalInfoPacket->leaderScore;
+				for (int i = 0; i < MAX_CLIENTS; i++)
+				{
+					int heldPlayerID = globalInfoPacket->playerIDs[i];
+					playerState[heldPlayerID] = globalInfoPacket->playerStates[i];
+				}
+			}
+			break;
 		case(BasicNetworkMessages::Player_DrawLine):
 			{
 				PlayerDrawLinePacket* drawPacket = (PlayerDrawLinePacket*)payload;
@@ -608,13 +698,11 @@ void CourseworkGame::ReceivePacket(int type, GamePacket* payload, int source)
 				int i = 0;
 				for (GameObject* gb : world->GetAllObjectsForNetworkUpdating())
 				{
-
 					if (gb->GetNetworkObject()->ReadPacket(*payload))
 					{
 						world->RemoveFromNetworkUpdateList(i);
 						return;
 					}
-
 					i++;
 				}
 			}
@@ -972,21 +1060,19 @@ void CourseworkGame::InitWorld() {
 	itemCollectionZone = AddCubeToWorld(Vector3(20 * 9.5, 20 * 1, 20 * 9.5), Vector3(3, 1, 2) * 20, 0, LAYER_TRIGGER, false, false);
 	itemCollectionZone->SetName("Home");
 	world->ResetObjectNetworkUpdateList();
-	
-	
 }
 
 void CourseworkGame::InitialisePlayerAsServer(int playerID)
 {
 	playerObject.insert({ playerID, AddPlayerToWorld(playerID, Vector3(20 * 8 + 15 * playerID, 5, 20 * 9)) });
-	playerObject[playerID]->SetRespawnPoint(Vector3(20 * 8, 5, 20 * 9));
+	playerState.insert({playerID, PLAYER_INACTIVE});
 	playerGroundedCollider.insert({ playerID, AddSphereToWorld(playerObject[playerID]->GetTransform().GetPosition(), 1.0f, 0.1f, LAYER_DEFAULT, false, false) });
 	playerGroundedCollider[playerID]->AddToIgnoreList(playerObject[playerID]);
 }
 void CourseworkGame::InitialisePlayerAsClient(int playerID)
 {
 	playerObject.insert({playerID, AddPlayerToWorld(playerID, Vector3(20 * 8 + 15 * playerID, 5, 20 * 9))});
-	playerObject[playerID]->SetRespawnPoint(Vector3(20 * 8, 5, 20 * 9));
+	playerState.insert({ playerID, PLAYER_INACTIVE });
 	playerGroundedCollider.insert({ playerID, AddSphereToWorld(playerObject[playerID]->GetTransform().GetPosition(), 1.0f, 0.1f, LAYER_DEFAULT, false, false)});
 	playerGroundedCollider[playerID]->AddToIgnoreList(playerObject[playerID]);
 }
@@ -1187,8 +1273,10 @@ PlayerObject* CourseworkGame::AddPlayerToWorld(int playerID, const Vector3& posi
 	character->GetTransform()
 		.SetScale(Vector3(meshSize, meshSize, meshSize))
 		.SetPosition(position);
+	character->SetRespawnPoint(position);
 	character->SetPositionToDampenTo(position);
-	
+	character->SetAssigned(false);
+	character->SetActive(false);
 	character->SetRenderObject(new RenderObject(&character->GetTransform(), charMesh, nullptr, basicShader));
 	character->SetPhysicsObject(new PhysicsObject(&character->GetTransform(), character->GetBoundingVolume()));
 	character->SetNetworkObject(new NetworkObject(*character, playerID));

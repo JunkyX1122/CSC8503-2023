@@ -148,6 +148,9 @@ namespace NCL::CSC8503 {
 	class PlayerObject : public GameObject
 	{
 	public:
+		void SetAssigned(bool b) { isAssigned = b; }
+		bool IsAssigned() { return isAssigned; }
+
 		void SetGrapplePoint(Vector3 v)
 		{
 			grapplePoint = v;
@@ -172,6 +175,7 @@ namespace NCL::CSC8503 {
 			itemsHolding.clear();
 		}
 	protected:
+		bool isAssigned = false;
 		bool isGrappling;
 		Vector3 grapplePoint;
 		Vector3 respawnPoint;

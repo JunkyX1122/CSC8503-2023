@@ -15,12 +15,14 @@
 #include "GameServer.h"
 #include "GameClient.h"
 #include <string>
+
+
 using std::string;
+
+
 namespace NCL {
 	namespace CSC8503 {
-
-
-
+		
 		class CourseworkGame : public PacketReceiver {
 		public:
 			CourseworkGame();
@@ -40,61 +42,59 @@ namespace NCL {
 			virtual void DisconnectAsClient();
 			bool connected = true;
 		protected:
+#ifdef USEVULKAN
+			GameTechVulkanRenderer* renderer;
+#else
+			GameTechRenderer* renderer;
+#endif
+
 			void InitialiseAssets();
-
-			void InitCamera();
-			void UpdateKeys();
-			void UpdatePlayerInfos(float dt);
-			void UpdatePlayerPhysics(float dt);
-			void UpdatePathFindings(float dt);
-			void UpdateBonusObjects(float dt);
-
-			void InitWorld();
-
-			/*
-			These are some of the world/object creation functions I created when testing the functionality
-			in the module. Feel free to mess around with them to see different objects being created in different
-			test scenarios (constraints, collision types, and so on). 
-			*/
-			void InitGameExamples();
-
-			void InitSphereGridWorld(int numRows, int numCols, float rowSpacing, float colSpacing, float radius);
-			void InitMixedGridWorld(int numRows, int numCols, float rowSpacing, float colSpacing);
-			void InitCubeGridWorld(int numRows, int numCols, float rowSpacing, float colSpacing, const Vector3& cubeDims);
-			void BridgeConstraintTest(Vector3 startPos, Vector3 endPos);
-
-			void InitDefaultFloor();
-
-			bool SelectObject();
-			void MoveSelectedObject();
-			void DebugObjectMovement();
-			void LockedObjectMovement();
-			void ClientSendInputs();
-			void AttachCameraPlayer(bool asServer, PlayerObject* pO, int playerID);
-			void MovePlayerObject(float dt, PlayerObject* pO, int playerID);
 			void GenerateLevel();
 			void GenerateItems();
-			
-
-
 			GameObject* AddFloorToWorld(const Vector3& position, Vector3 dimensions);
 			GameObject* AddSphereToWorld(const Vector3& position, float radius, float inverseMass = 10.0f, int collisionLayer = LAYER_DEFAULT, bool isCollidable = true, bool rendered = true);
 			GameObject* AddCubeToWorld(const Vector3& position, Vector3 dimensions, float inverseMass = 10.0f, int collisionLayer = LAYER_DEFAULT, bool isCollidable = true, bool rendered = true);
 			GameObject* AddCapsuleToWorld(const Vector3& position, float halfHeight, float radius, float inverseMass = 10.0f, int collisionLayer = LAYER_DEFAULT, bool isCollidable = true, bool rendered = true);
-
-			
 			PlayerObject* AddPlayerToWorld(int playerID, const Vector3& position);
 			EnemyObject* AddEnemyToWorld(const Vector3& position);
 			BonusObject* AddBonusToWorld(const Vector3& position, int type = 0);
+			StateGameObject* AddStateObjectToWorld(const Vector3& position);
+			StateGameObject* testStateObject;
 
-#ifdef USEVULKAN
-			GameTechVulkanRenderer*	renderer;
-#else
-			GameTechRenderer* renderer;
-#endif
+			void InitialisePlayerAsServer(int playerID);
+			void InitialisePlayerAsClient(int playerID);
+			void InitCamera();
+			void UpdateGameState(float dt);
+			void UpdateKeys();
+			void UpdateServerPlayerInfos(float dt);
+			void UpdateServerPlayerPhysics(float dt);
+			void UpdateServerPathFindings(float dt);
+			void UpdateServerBonusObjects(float dt);
+			void UpdateClientUI(float dt);
+			void AttachCameraPlayer(bool asServer, PlayerObject* pO, int playerID);
+			void MovePlayerObject(float dt, PlayerObject* pO, int playerID);
+			void OnPlayerConnect(int peerID);
+			void OnPlayerDisconnect(int peerID);
+			void OnOtherPlayerConnect(int peerID);
+			void OnOtherPlayerDisconnect(int peerID);
+			void BroadcastSnapshot(bool deltaFrame);
+			void ClientSendInputs();
+			
+			void InitWorld();
+
+			void InitGameExamples();
+			void InitSphereGridWorld(int numRows, int numCols, float rowSpacing, float colSpacing, float radius);
+			void InitMixedGridWorld(int numRows, int numCols, float rowSpacing, float colSpacing);
+			void InitCubeGridWorld(int numRows, int numCols, float rowSpacing, float colSpacing, const Vector3& cubeDims);
+			void BridgeConstraintTest(Vector3 startPos, Vector3 endPos);
+			void InitDefaultFloor();
+			bool SelectObject();
+			void MoveSelectedObject();
+			void DebugObjectMovement();
+			void LockedObjectMovement();
+
 			PhysicsSystem*		physics;
 			GameWorld*			world;
-
 			KeyboardMouseController controller;
 
 			bool useGravity;
@@ -124,18 +124,12 @@ namespace NCL {
 				lockedObject = o;
 			}
 
-			GameObject* objClosest = nullptr;
-
-			StateGameObject* AddStateObjectToWorld(const Vector3& position);
-			StateGameObject* testStateObject;
-
-			
+			GameObject* objClosest = nullptr;	
 
 			LevelData* levelData = nullptr;
 			float outOfBounds[4] = {};
 			std::vector<EnemyObject*> enemyObjects = std::vector<EnemyObject*>{};
 			std::vector<BonusObject*> bonusObjects = std::vector<BonusObject*>{};
-
 
 			std::map<int, PlayerObject*> playerObject = {};
 			std::map<int, GameObject*> playerGroundedCollider = {};
@@ -144,36 +138,26 @@ namespace NCL {
 			std::map<int, char[8]> playerInputs = {};
 			std::map<int, Quaternion> playerRotation = {};
 			std::map<int, Vector3> playerCameraOffsetPosition = {};
+			std::map<int, PlayerState> playerState = {};
 			int selfClientID = 0;
 			int selfScore = 0;
 			int leaderID = 0;
 			int leaderScore = 0;
 			float selfDashTimer = 0.0f;
-			// NETWORKING
+			float gameTimer = 0.0f;
+			
+			GameState gameState = GAME_NOTSTARTED;
 
 			GameServer* gameServer = nullptr;
-			int numberOfActivePlayers = -1;
-			int activePlayers[4] = { 0,0,0,0 };
+			int numberOfActivePlayers = 0;
+
+		
 			GameClient* gameClient = nullptr;
 			float clientConnectionTimer = 3.0f;
+			
 
 			GameObject* itemCollectionZone;
-			void BroadcastSnapshot(bool deltaFrame);
-			
-			void OnPlayerConnect(int peerID);
-			void OnPlayerDisconnect(int peerID);
-
-			void OnOtherPlayerConnect(int peerID);
-			void OnOtherPlayerDisconnect(int peerID);
-			void InitialisePlayerAsServer(int playerID);
-			void InitialisePlayerAsClient(int playerID);
-	
-			
-			//std::vector<GameObject*, int> networkVector;
 		};
-	
-	
-		
 	}
 }
 
