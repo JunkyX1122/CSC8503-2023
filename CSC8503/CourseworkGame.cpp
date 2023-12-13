@@ -95,6 +95,8 @@ void CourseworkGame::InitialiseAssets()
 	groundTex = renderer->LoadTexture("Dirty_Grass_DIFF.png");
 	mostValuableTex = renderer->LoadTexture("OIP.png");
 	basicShader = renderer->LoadShader("scene.vert", "scene.frag");
+	levelDataBeingUsed = "LevelGrid1.txt";
+	itemDataBeingUsed = "ItemGrid1.txt";
 }
 
 void CourseworkGame::InitialiseGameAsServer()
@@ -1105,7 +1107,7 @@ void CourseworkGame::InitialisePlayerAsClient(int playerID)
 }
 void CourseworkGame::GenerateLevel()
 {
-	levelData = new LevelData("TestGrid1.txt");
+	levelData = new LevelData(levelDataBeingUsed);
 	int nodeSize = levelData->GetNodeSize();
 	float nodeHeight = nodeSize * 0.25f;
 	Vector3 startPos;
@@ -1160,7 +1162,7 @@ void CourseworkGame::GenerateLevel()
 }
 void CourseworkGame::GenerateItems()
 {
-	std::ifstream infile(Assets::DATADIR + "ItemGrid1.txt");
+	std::ifstream infile(Assets::DATADIR + itemDataBeingUsed);
 	int nodeSize;
 	int gridWidth;
 	int gridHeight;

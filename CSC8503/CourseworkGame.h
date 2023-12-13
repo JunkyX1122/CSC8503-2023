@@ -157,6 +157,8 @@ namespace NCL {
 			GameClient* gameClient = nullptr;
 			float clientConnectionTimer = 3.0f;
 			
+			std::string levelDataBeingUsed;
+			std::string itemDataBeingUsed;
 
 			GameObject* itemCollectionZone;
 		};
