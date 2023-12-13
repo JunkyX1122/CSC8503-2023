@@ -110,6 +110,9 @@ namespace NCL::CSC8503 {
 		void SetPositionToDampenTo(Vector3 v) { positionToDampenTo = v; }
 		Vector3 GetPositionToDampenTo() { return positionToDampenTo; }
 
+		void SetOrientationToDampenTo(Quaternion q) { orientationToDampenTo = q; }
+		Quaternion GetOrientationToDampenTo() { return orientationToDampenTo; }
+
 		void ResetCollidingList()
 		{
 			isCollidingWith.clear();
@@ -141,6 +144,7 @@ namespace NCL::CSC8503 {
 
 		Vector3 broadphaseAABB;
 		Vector3 positionToDampenTo;
+		Quaternion orientationToDampenTo;
 		std::vector<GameObject*> ignoreList = std::vector<GameObject*>{};
 		std::vector<GameObject*> isCollidingWith = std::vector<GameObject*>{};
 	};

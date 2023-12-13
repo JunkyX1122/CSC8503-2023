@@ -74,7 +74,7 @@ bool NetworkObject::ReadFullPacket(FullPacket &p)
 	//std::cout << p.fullState.position << "\n";
 	//std::cout << lastFullState.position << "\n";
 	object.SetPositionToDampenTo(lastFullState.position);
-	object.GetTransform().SetOrientation(lastFullState.orientation);
+	object.SetOrientationToDampenTo(lastFullState.orientation);
 	object.SetActive(lastFullState.isEnabled);
 	
 

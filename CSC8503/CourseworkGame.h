@@ -72,6 +72,7 @@ namespace NCL {
 			void UpdateServerBonusObjects(float dt);
 			void UpdateClientUI(float dt);
 			void AttachCameraPlayer(bool asServer, PlayerObject* pO, int playerID);
+			void AttachServerCameraToPlayer(int playerID);
 			void MovePlayerObject(float dt, PlayerObject* pO, int playerID);
 			void OnPlayerConnect(int peerID);
 			void OnPlayerDisconnect(int peerID);
@@ -151,8 +152,8 @@ namespace NCL {
 
 			GameServer* gameServer = nullptr;
 			int numberOfActivePlayers = 0;
-
-		
+			int followPlayer = -1;
+			float zoomOut = 4;
 			GameClient* gameClient = nullptr;
 			float clientConnectionTimer = 3.0f;
 			

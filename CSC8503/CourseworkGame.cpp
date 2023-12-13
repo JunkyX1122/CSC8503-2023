@@ -119,7 +119,7 @@ void CourseworkGame::OnPlayerConnect(int peerID)
 	playerObject[peerID]->SetAssigned(true);
 	playerObject[peerID]->SetActive(true);
 	playerState[peerID] = gameState == GAME_ACTIVE ? PLAYER_PLAYING : PLAYER_NOTREADY;
-	gameTimer = gameState == GAME_ACTIVE ? GAME_TIMELIMIT : GAME_JOIN_TIMER;
+	gameTimer = gameState == GAME_ACTIVE ? gameTimer : GAME_JOIN_TIMER;
 	numberOfActivePlayers++;
 }
 void CourseworkGame::OnPlayerDisconnect(int peerID)
@@ -128,26 +128,27 @@ void CourseworkGame::OnPlayerDisconnect(int peerID)
 	playerObject[peerID]->SetAssigned(false);
 	playerObject[peerID]->SetActive(false);
 	playerState[peerID] = PLAYER_INACTIVE;
-	gameTimer = gameState == GAME_ACTIVE ? GAME_TIMELIMIT : GAME_JOIN_TIMER;
+	gameTimer = gameState == GAME_ACTIVE ? gameTimer : GAME_JOIN_TIMER;
 	numberOfActivePlayers--;
 }
 void CourseworkGame::UpdateAsServer(float dt)
 {
 	UpdateServerPlayerInfos(dt);
 	gameServer->UpdateServer();
+	UpdateKeys();
 	UpdateGameState(dt);
 	UpdateServerPlayerPhysics(dt);
 	if (gameState==GAME_ACTIVE)
 	{
-		
-		//UpdateKeys();
 		UpdateServerPathFindings(dt);
 		UpdateServerBonusObjects(dt);
 	}
 
 	world->GetMainCamera().UpdateCamera(dt);
-
-
+	if (followPlayer > -1)
+	{
+		AttachServerCameraToPlayer(followPlayer);
+	}
 	world->UpdateWorld(dt);
 	//renderer->Update(dt);
 	physics->Update(dt);
@@ -437,6 +438,8 @@ void CourseworkGame::UpdateAsClient(float dt)
 		for (GameObject* objects : world->GetToUpdateList())
 		{
 			objects->GetTransform().SetPosition(objects->GetTransform().GetPosition() * (1.0f - 0.2f) + objects->GetPositionToDampenTo() * 0.2f);
+			objects->GetTransform().SetOrientation(Quaternion::Lerp(objects->GetTransform().GetOrientation(), objects->GetOrientationToDampenTo(),0.2f));
+
 		}
 		ClientSendInputs();
 		if (selfClientID >= 0)
@@ -750,51 +753,27 @@ void CourseworkGame::UpdateOuter(float dt)
 
 void CourseworkGame::UpdateKeys() 
 {
-	if (Window::GetKeyboard()->KeyPressed(KeyCodes::F1)) {
-		InitWorld(); //We can reset the simulation at any time with F1
-		selectionObject = nullptr;
-	}
-
-	if (Window::GetKeyboard()->KeyPressed(KeyCodes::F2)) {
-		InitCamera(); //F2 will reset the camera to a specific default place
-	}
-
-	if (Window::GetKeyboard()->KeyPressed(KeyCodes::G)) {
-		useGravity = !useGravity; //Toggle gravity!
-		physics->UseGravity(useGravity);
-	}
-	if (Window::GetKeyboard()->KeyPressed(KeyCodes::O)) {
-		inPlayerMode = !inPlayerMode;
-		Window::GetWindow()->ShowOSPointer(!inPlayerMode);
-		Window::GetWindow()->LockMouseToWindow(inPlayerMode);
-	}
 	if (Window::GetKeyboard()->KeyPressed(KeyCodes::F3)) {
 		physics->ToggleDrawHitboxes();
 	}
-	
-	//Running certain physics updates in a consistent order might cause some
-	//bias in the calculations - the same objects might keep 'winning' the constraint
-	//allowing the other one to stretch too much etc. Shuffling the order so that it
-	//is random every frame can help reduce such bias.
-	if (Window::GetKeyboard()->KeyPressed(KeyCodes::F9)) {
-		world->ShuffleConstraints(true);
+	if (Window::GetKeyboard()->KeyPressed(KeyCodes::E))
+	{
+		followPlayer++;
+		if (followPlayer >= MAX_CLIENTS) { followPlayer = -1; }
 	}
-	if (Window::GetKeyboard()->KeyPressed(KeyCodes::F10)) {
-		world->ShuffleConstraints(false);
+	if (Window::GetKeyboard()->KeyPressed(KeyCodes::Q))
+	{
+		followPlayer--;
+		if (followPlayer < -1) { followPlayer = MAX_CLIENTS - 1; }
 	}
 
-	if (Window::GetKeyboard()->KeyPressed(KeyCodes::F7)) {
-		world->ShuffleObjects(true);
+	if (Window::GetKeyboard()->KeyDown(KeyCodes::MINUS))
+	{
+		zoomOut += 0.25f;
 	}
-	if (Window::GetKeyboard()->KeyPressed(KeyCodes::F8)) {
-		world->ShuffleObjects(false);
-	}
-	
-	if (lockedObject) {
-		//LockedObjectMovement();
-	}
-	else {
-		//DebugObjectMovement();
+	if (Window::GetKeyboard()->KeyDown(KeyCodes::PLUS))
+	{
+		zoomOut = std::max(zoomOut - 0.25f, 2.0f);
 	}
 }
 
@@ -851,14 +830,8 @@ void CourseworkGame::AttachCameraPlayer(bool asServer, PlayerObject* pO, int pla
 		pitch = std::min(pitch, 89.0f);
 		pitch = std::max(pitch, -89.0f);
 
-		if (yaw < 0) {
-			yaw += 360.0f;
-		}
-		if (yaw > 360.0f) {
-			yaw -= 360.0f;
-		}
-		camOrientation.x = pitch;
-		camOrientation.y = yaw;
+		camOrientation.x = camOrientation.x * 0.8f + pitch	* 0.2f;
+		camOrientation.y = camOrientation.y * 0.8f + yaw	* 0.2f;
 		*playerCameraRotation[playerID] = Quaternion::EulerAnglesToQuaternion(pitch, yaw, camOrientation.z);
 	}
 	
@@ -896,7 +869,41 @@ void CourseworkGame::AttachCameraPlayer(bool asServer, PlayerObject* pO, int pla
 			0.05f);
 	}
 }
+void CourseworkGame::AttachServerCameraToPlayer(int playerID)
+{
+	Vector3 objPos = playerObject[playerID]->GetTransform().GetPosition();
 
+	float pitch = world->GetMainCamera().GetPitch();
+	float yaw = world->GetMainCamera().GetYaw();
+
+	pitch -= controller.GetNamedAxis("YLook");
+	yaw -= controller.GetNamedAxis("XLook");
+
+	pitch = std::min(pitch, 89.0f);
+	pitch = std::max(pitch, -89.0f);
+
+	world->GetMainCamera().SetPitch(world->GetMainCamera().GetPitch() * 0.8f + pitch * 0.2f);
+	world->GetMainCamera().SetYaw(world->GetMainCamera().GetYaw() * 0.8f + yaw * 0.2f);
+
+	Vector3 offset(0, 4, 0);
+	Vector3 camPos = (
+		Matrix4::Translation(objPos + offset) *
+		Matrix4(Quaternion::EulerAnglesToQuaternion(world->GetMainCamera().GetPitch(), world->GetMainCamera().GetYaw(),0)) *
+		Matrix4::Translation(Vector3(0, 0, zoomOut))
+		).GetPositionVector();
+
+	Matrix4 temp = Matrix4::BuildViewMatrix(camPos, objPos + offset, Vector3(0, 1, 0));
+	Matrix4 modelMat = temp.Inverse();
+	Quaternion q(modelMat);
+	Vector3 angles = q.ToEuler(); //nearly there now!
+
+	float dampen = 1.0f;
+
+	Quaternion camQuat = Quaternion::EulerAnglesToQuaternion(world->GetMainCamera().GetPitch(), world->GetMainCamera().GetYaw(), 0);
+
+	world->GetMainCamera().SetPosition(world->GetMainCamera().GetPosition() * (1.0f - dampen) + camPos * dampen);
+
+}
 void CourseworkGame::MovePlayerObject(float dt, PlayerObject* pO, int playerID) 
 {
 	Quaternion camQuat = Quaternion::EulerAnglesToQuaternion(world->GetMainCamera().GetPitch(), world->GetMainCamera().GetYaw(), 0);
@@ -1256,13 +1263,14 @@ GameObject* CourseworkGame::AddCubeToWorld(const Vector3& position, Vector3 dime
 	cube->GetTransform()
 		.SetPosition(position)
 		.SetScale(dimensions * 2);
+	cube->SetPositionToDampenTo(position);
 
 	if (rendered) cube->SetRenderObject(new RenderObject(&cube->GetTransform(), cubeMesh, basicTex, basicShader));
 	cube->SetPhysicsObject(new PhysicsObject(&cube->GetTransform(), cube->GetBoundingVolume()));
 
 	cube->GetPhysicsObject()->SetInverseMass(inverseMass);
 	cube->GetPhysicsObject()->InitCubeInertia();
-
+	cube->GetPhysicsObject()->SetElasticity(0.5f);
 	world->AddGameObject(cube);
 
 	return cube;
@@ -1304,6 +1312,8 @@ PlayerObject* CourseworkGame::AddPlayerToWorld(int playerID, const Vector3& posi
 		.SetPosition(position);
 	character->SetRespawnPoint(position);
 	character->SetPositionToDampenTo(position);
+	character->SetOrientationToDampenTo(character->GetTransform().GetOrientation());
+
 	character->SetAssigned(false);
 	character->SetActive(false);
 	character->SetRenderObject(new RenderObject(&character->GetTransform(), charMesh, nullptr, basicShader));
@@ -1339,7 +1349,9 @@ EnemyObject* CourseworkGame::AddEnemyToWorld(const Vector3& position) {
 	character->GetTransform()
 		.SetScale(Vector3(meshSize, meshSize, meshSize))
 		.SetPosition(position);
+	character->SetInitialPosition(position);
 	character->SetPositionToDampenTo(position);
+	character->SetOrientationToDampenTo(character->GetTransform().GetOrientation());
 
 	character->SetRenderObject(new RenderObject(&character->GetTransform(), enemyMesh, nullptr, basicShader));
 	character->SetPhysicsObject(new PhysicsObject(&character->GetTransform(), character->GetBoundingVolume()));
@@ -1368,6 +1380,7 @@ BonusObject* CourseworkGame::AddBonusToWorld(const Vector3& position, int type) 
 		.SetOrientation(Quaternion::EulerAnglesToQuaternion(0,RandomValue(0.0f, 360.0f),0));
 	apple->SetInitialPosition(position);
 	apple->SetPositionToDampenTo(position);
+	apple->SetOrientationToDampenTo(apple->GetTransform().GetOrientation());
 	for (auto eO : enemyObjects)
 	{
 		apple->AddToIgnoreList(eO);
