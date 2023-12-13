@@ -31,7 +31,7 @@ const float SERVER_CONNECTION_TIMELIMIT = 0.5f;
 const float CONNECTION_TIMEOUT = 5.0f;
 
 const float GAME_TIMELIMIT = 60.0f * 3;
-const float GAME_JOIN_TIMER = 10.0f;
+const float GAME_JOIN_TIMER = 30.0f;
 
 
 CourseworkGame::CourseworkGame() : controller(*Window::GetWindow()->GetKeyboard(), *Window::GetWindow()->GetMouse()) {
@@ -117,8 +117,8 @@ void CourseworkGame::OnPlayerConnect(int peerID)
 	std::cout << "Player ID " << peerID << " has connected!\n";
 	playerObject[peerID]->SetAssigned(true);
 	playerObject[peerID]->SetActive(true);
-	playerState[peerID] = PLAYER_NOTREADY;
-	gameTimer = GAME_JOIN_TIMER;
+	playerState[peerID] = GAME_ACTIVE ? PLAYER_PLAYING : PLAYER_NOTREADY;
+	gameTimer = gameState == GAME_ACTIVE ? GAME_TIMELIMIT : GAME_JOIN_TIMER;
 	numberOfActivePlayers++;
 }
 void CourseworkGame::OnPlayerDisconnect(int peerID)
@@ -127,7 +127,7 @@ void CourseworkGame::OnPlayerDisconnect(int peerID)
 	playerObject[peerID]->SetAssigned(false);
 	playerObject[peerID]->SetActive(false);
 	playerState[peerID] = PLAYER_INACTIVE;
-	gameTimer = GAME_JOIN_TIMER;
+	gameTimer = gameState == GAME_ACTIVE ? GAME_TIMELIMIT : GAME_JOIN_TIMER;
 	numberOfActivePlayers--;
 }
 void CourseworkGame::UpdateAsServer(float dt)
@@ -166,16 +166,16 @@ void CourseworkGame::UpdateGameState(float dt)
 	if (numberOfActivePlayers == 0) return;
 	if (gameState == GAME_ACTIVE)
 	{
-		gameTimer -= dt;
+		gameTimer = std::max(gameTimer - dt, 0.0f);
 	}
 	else
 	{
-		float timerScale = 1.0f;
+		int readyPlayers = 0;
 		for (auto player : playerInputs)
 		{
 			if (playerState[player.first] == PLAYER_READY)
 			{
-				timerScale += (1.0f / numberOfActivePlayers);
+				readyPlayers++;
 				continue;
 			}
 			if (player.second[0] == IS_DOWN)
@@ -183,6 +183,7 @@ void CourseworkGame::UpdateGameState(float dt)
 				playerState[player.first] = PLAYER_READY;
 			}
 		}
+		gameTimer = readyPlayers == numberOfActivePlayers ? std::min(gameTimer, 6.0f) : gameTimer;
 		if (gameTimer <= 0.0f)
 		{
 			gameState = GAME_ACTIVE;
@@ -192,7 +193,7 @@ void CourseworkGame::UpdateGameState(float dt)
 				playerState[pS.first] = PLAYER_PLAYING;
 			}
 		}
-		gameTimer -= dt * timerScale;
+		gameTimer = std::max(gameTimer - dt, 0.0f);
 	}
 }
 void CourseworkGame::UpdateServerPlayerInfos(float dt)
@@ -459,6 +460,8 @@ void CourseworkGame::UpdateClientUI(float dt)
 		Vector4 playerColor = (col1 * (1.0f / 3.0f * leaderID) + col2 * (1.0f - 1.0f / 3.0f * leaderID));
 
 		Vector4 color = Vector4(darken, darken, darken, 1.0f) * (1.0f - 1.0f / 2 * o);
+		Vector4 colorUnready = Vector4(darken, 0, 0, 1.0f) * (1.0f - 1.0f / 2 * o);
+		Vector4 colorReady = Vector4(0, darken, 0, 1.0f) * (1.0f - 1.0f / 2 * o);
 		Vector4 leaderColor = playerColor * (1.0f - 1.0f / 2 * o);
 
 
@@ -466,7 +469,22 @@ void CourseworkGame::UpdateClientUI(float dt)
 		Debug::Print("Score: " + std::to_string(selfScore), Vector2(2, 5) + offset, color);
 		Debug::Print("Leader (Player_" + std::to_string(leaderID) + "): " + std::to_string(leaderScore), Vector2(2, 10) + offset, leaderColor);
 
-		Debug::Print("TIMER: " + std::to_string(gameTimer), Vector2(50, 5) + offset, color);
+		int playersReady = 0;
+		int playersJoined = 0;
+		for (auto pS : playerState)
+		{
+			if (pS.second != PLAYER_INACTIVE)
+			{
+				playersReady += pS.second == PLAYER_READY ? 1 : 0;
+				playersJoined++;
+			}
+		}
+		PlayerState selfState = playerState[selfClientID];
+		std::string timerText = (gameState == GAME_ACTIVE) ? "TIMER: " : 
+			((selfState == PLAYER_NOTREADY ?
+				"[SPACE] TO READY: " 
+				: ("READY (" + std::to_string(playersReady) + "/" + std::to_string(playersJoined) + "): ")));
+		Debug::Print(timerText + std::to_string((int)floor(gameTimer)), Vector2(50, 5) + offset, selfState == PLAYER_PLAYING ? color : (selfState == PLAYER_READY ? colorReady : colorUnready));
 
 		int dashNumber = (int)(floor(selfDashTimer * 3));
 		std::string dashString = "Dash [";
