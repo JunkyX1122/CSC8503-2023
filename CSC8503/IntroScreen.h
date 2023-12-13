@@ -16,6 +16,12 @@ class IntroScreen : public PushdownState
 			bool selected = selectedOption == i;
 			Debug::Print((selected ? "> " : "") + options[i], Vector2(5, 15 + 5 * i), selected ? colors[i] : Vector4(0.2, 0.2, 0.2, 1));
 		}
+
+		for (int i = 0; i < optionsLevel.size(); i++)
+		{
+			bool selected = selectedLevel == i;
+			Debug::Print(("") + optionsLevel[i], Vector2(65 + 15 * i, 15), (selected && selectedOption == 0) ? Vector4(0, 0, 1, 0) : Vector4(0.2, 0.2, 0.2, 1));
+		}
 		if (Window::GetKeyboard()->KeyPressed(KeyCodes::UP))
 		{
 			selectedOption--;
@@ -25,6 +31,16 @@ class IntroScreen : public PushdownState
 		{
 			selectedOption = (selectedOption + 1) % options.size();
 		}
+
+		if (Window::GetKeyboard()->KeyPressed(KeyCodes::LEFT))
+		{
+			selectedLevel--;
+			if (selectedLevel < 0) selectedLevel = optionsLevel.size() - 1;
+		}
+		if (Window::GetKeyboard()->KeyPressed(KeyCodes::RIGHT))
+		{
+			selectedLevel = (selectedLevel + 1) % optionsLevel.size();
+		}
 		
 		if (Window::GetKeyboard()->KeyPressed(KeyCodes::SPACE))
 		{
@@ -33,6 +49,7 @@ class IntroScreen : public PushdownState
 			case(0):
 				passedTag = "Start Server";
 				windowRef->SetWindowPosition(-1920, 0);
+				gameRef->SetLevelID(selectedLevel);
 				gameRef->InitialiseGameAsServer();
 				*newState = new GameScreen(gameRef, true);
 				return PushdownResult::Push;
@@ -41,6 +58,7 @@ class IntroScreen : public PushdownState
 
 				passedTag = "Start Client";
 				windowRef->SetWindowPosition(0, 0);
+				gameRef->SetLevelID(-1);
 				gameRef->InitialiseGameAsClient();
 				*newState = new GameScreen(gameRef, false);
 				return PushdownResult::Push;
@@ -84,6 +102,7 @@ protected:
 	CourseworkGame* gameRef;
 	Window* windowRef;
 	int selectedOption = 0;
+	int selectedLevel = 0;
 	bool failedToConnect = false;
 	std::vector<std::string> options = 
 	{
@@ -99,5 +118,9 @@ protected:
 		Vector4(0,1,0,1),
 		Vector4(0,1,0,1)
 	};
-	
+	std::vector<std::string> optionsLevel =
+	{
+		"Level 1",
+		"Test Level"
+	};
 };

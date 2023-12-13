@@ -27,7 +27,7 @@ const char IS_UP = '0';
 const char IS_PRESSED = '1';
 const char IS_DOWN = '2';
 
-const float SERVER_CONNECTION_TIMELIMIT = 0.5f;
+const float SERVER_CONNECTION_TIMELIMIT = 5.0f;
 const float CONNECTION_TIMEOUT = 5.0f;
 
 const float GAME_TIMELIMIT = 60.0f * 3;
@@ -78,6 +78,7 @@ void CourseworkGame::EraseWorld()
 	playerInputs.clear();
 	playerRotation.clear();
 	playerCameraOffsetPosition.clear();
+	playerState.clear();
 	enemyObjects.clear();
 	bonusObjects.clear();
 	itemCollectionZone = nullptr;
@@ -95,15 +96,24 @@ void CourseworkGame::InitialiseAssets()
 	groundTex = renderer->LoadTexture("Dirty_Grass_DIFF.png");
 	mostValuableTex = renderer->LoadTexture("OIP.png");
 	basicShader = renderer->LoadShader("scene.vert", "scene.frag");
-	levelDataBeingUsed = "LevelGrid1.txt";
-	itemDataBeingUsed = "ItemGrid1.txt";
+	//levelDataBeingUsed = "LevelGrid1.txt";
+	//itemDataBeingUsed = "ItemGrid1.txt";
+	worldDatas_Level.push_back("LevelGrid1.txt");
+	worldDatas_Level.push_back("LevelGrid0.txt");
+	worldDatas_Item.push_back("ItemGrid1.txt");
+	worldDatas_Item.push_back("ItemGrid0.txt");
 }
 
 void CourseworkGame::InitialiseGameAsServer()
 {
 	std::cout << "Started World As Server\n";
+	numberOfActivePlayers = 0;
+	gameTimer = GAME_JOIN_TIMER;
 	InitialiseAssets();
-	gameState = GAME_WAITINGFORPLAYERS;
+
+	levelDataBeingUsed = worldDatas_Level[levelID];
+	itemDataBeingUsed = worldDatas_Item[levelID];
+
 	world->GetMainCamera().SetPosition(Vector3(20 * 8, 350, 20 * 20));
 	world->GetMainCamera().SetPitch(-70.0f);
 	NetworkBase::Initialise();
@@ -122,6 +132,7 @@ void CourseworkGame::OnPlayerConnect(int peerID)
 	playerObject[peerID]->SetActive(true);
 	playerState[peerID] = gameState == GAME_ACTIVE ? PLAYER_PLAYING : PLAYER_NOTREADY;
 	gameTimer = gameState == GAME_ACTIVE ? gameTimer : GAME_JOIN_TIMER;
+	gameState = gameState == GAME_NOTSTARTED ? GAME_WAITINGFORPLAYERS : gameState;
 	numberOfActivePlayers++;
 }
 void CourseworkGame::OnPlayerDisconnect(int peerID)
@@ -135,6 +146,7 @@ void CourseworkGame::OnPlayerDisconnect(int peerID)
 }
 void CourseworkGame::UpdateAsServer(float dt)
 {
+	
 	UpdateServerPlayerInfos(dt);
 	gameServer->UpdateServer();
 	UpdateKeys();
@@ -202,6 +214,17 @@ void CourseworkGame::UpdateGameState(float dt)
 }
 void CourseworkGame::UpdateServerPlayerInfos(float dt)
 {
+	if (gameState == GAME_WAITINGFORPLAYERS || gameState == GAME_NOTSTARTED)
+	{
+		GamePacket* newPacket = nullptr;
+
+		ServerInformation* sp = new ServerInformation();
+		sp->levelID = levelID;
+
+		newPacket = sp;
+		gameServer->SendGlobalPacket(*newPacket);
+		delete newPacket;
+	}
 	leaderScore = 0;
 	leaderID = 0;
 	for (auto pO : playerObject)
@@ -392,7 +415,9 @@ void CourseworkGame::InitialiseGameAsClient()
 {
 	std::cout << "Started World As Client\n";
 	InitialiseAssets();
-	gameState = GAME_WAITINGFORPLAYERS;
+	initTheWorld = false;
+	levelID = -1;
+	gameState = GAME_NOTSTARTED;
 	NetworkBase::Initialise();
 	int port = NetworkBase::GetDefaultPort();
 
@@ -404,12 +429,14 @@ void CourseworkGame::InitialiseGameAsClient()
 	gameClient->RegisterPacketHandler(Player_Info, this);
 	gameClient->RegisterPacketHandler(GlobalPlayer_Info, this);
 	gameClient->RegisterPacketHandler(Player_DrawLine, this);
+	gameClient->RegisterPacketHandler(Server_Information, this);
+
 	bool canConnect = gameClient->Connect(127, 0, 0, 1, port);
 	connected = canConnect;
 	clientConnectionTimer = SERVER_CONNECTION_TIMELIMIT;
 	EraseWorld();
-	InitWorld();
-	InitCamera();
+	//InitWorld();
+	//InitCamera();
 }
 void CourseworkGame::OnOtherPlayerConnect(int peerID)
 {
@@ -424,33 +451,43 @@ void CourseworkGame::UpdateAsClient(float dt)
 	// Here we need to recieve the packets from the server.
 	//world->ClearAndErase();
 	//world->GetMainCamera().UpdateCamera(dt);
-
+	
 	if (gameClient)
 	{
 		
 		clientConnectionTimer -= dt;
 		world->ResetObjectNetworkUpdateList();
 		gameClient->UpdateClient();
+		if (levelID != -1 && initTheWorld == false)
+		{
+			EraseWorld();
+			InitWorld();
+			InitCamera();
+			initTheWorld = true;
+		}
 		if (clientConnectionTimer <= 0)
 		{
 			connected = false;
 			return;
 		}
-		UpdateClientUI(dt);
-		for (GameObject* objects : world->GetToUpdateList())
+		if (initTheWorld == true)
 		{
-			objects->GetTransform().SetPosition(objects->GetTransform().GetPosition() * (1.0f - 0.2f) + objects->GetPositionToDampenTo() * 0.2f);
-			objects->GetTransform().SetOrientation(Quaternion::Lerp(objects->GetTransform().GetOrientation(), objects->GetOrientationToDampenTo(),0.2f));
+			UpdateClientUI(dt);
+			for (GameObject* objects : world->GetToUpdateList())
+			{
+				objects->GetTransform().SetPosition(objects->GetTransform().GetPosition() * (1.0f - 0.2f) + objects->GetPositionToDampenTo() * 0.2f);
+				objects->GetTransform().SetOrientation(Quaternion::Lerp(objects->GetTransform().GetOrientation(), objects->GetOrientationToDampenTo(), 0.2f));
 
+			}
+			ClientSendInputs();
+			if (selfClientID >= 0)
+			{
+				AttachCameraPlayer(false, playerObject[selfClientID], selfClientID);
+			}
+			world->UpdateWorld(dt);
+			renderer->Update(dt);
+			renderer->Render();
 		}
-		ClientSendInputs();
-		if (selfClientID >= 0)
-		{
-			AttachCameraPlayer(false, playerObject[selfClientID], selfClientID);
-		}
-		world->UpdateWorld(dt);
-		renderer->Update(dt);
-		renderer->Render();
 		Debug::UpdateRenderables(dt);
 	}
 	//std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -679,7 +716,21 @@ void CourseworkGame::ReceivePacket(int type, GamePacket* payload, int source)
 	{
 		switch (type)
 		{
+		case(BasicNetworkMessages::Server_Information):
+		{
+			if (initTheWorld == false)
+			{
+				ServerInformation* serverInfoPacket = (ServerInformation*)payload;
+				levelID = serverInfoPacket->levelID;
+				levelDataBeingUsed = worldDatas_Level[levelID];
+				itemDataBeingUsed = worldDatas_Item[levelID];
+			}
+		}
+		break;
+
 		case(BasicNetworkMessages::Player_Info):
+		{
+			if (initTheWorld == true)
 			{
 				PlayerInfoPacket* infoPacket = (PlayerInfoPacket*)payload;
 				//std::cout << infoPacket->yourAssignedObject << "\n";
@@ -688,12 +739,14 @@ void CourseworkGame::ReceivePacket(int type, GamePacket* payload, int source)
 				selfDashTimer = infoPacket->dashTimer;
 				gameTimer = infoPacket->gameTimer;
 				gameState = infoPacket->gameState;
-
 				clientConnectionTimer = CONNECTION_TIMEOUT;
 			}
-			break;
+		}
+		break;
 
 		case(BasicNetworkMessages::GlobalPlayer_Info):
+		{
+			if (initTheWorld == true)
 			{
 				GlobalPlayerInfoPacket* globalInfoPacket = (GlobalPlayerInfoPacket*)payload;
 				leaderID = globalInfoPacket->leader;
@@ -704,8 +757,11 @@ void CourseworkGame::ReceivePacket(int type, GamePacket* payload, int source)
 					playerState[heldPlayerID] = globalInfoPacket->playerStates[i];
 				}
 			}
-			break;
+		}
+		break;
 		case(BasicNetworkMessages::Player_DrawLine):
+		{
+			if (initTheWorld == true)
 			{
 				PlayerDrawLinePacket* drawPacket = (PlayerDrawLinePacket*)payload;
 				if (drawPacket->doDraw)
@@ -716,9 +772,12 @@ void CourseworkGame::ReceivePacket(int type, GamePacket* payload, int source)
 					}
 				}
 			}
-			break;
+		}
+		break;
 
 		default:
+		{
+			if (initTheWorld == true)
 			{
 				int i = 0;
 				for (GameObject* gb : world->GetAllObjectsForNetworkUpdating())
@@ -731,8 +790,12 @@ void CourseworkGame::ReceivePacket(int type, GamePacket* payload, int source)
 					i++;
 				}
 			}
-			break;
 		}
+		break;
+		}
+		
+	
+		
 	}
 	if (gameServer)
 	{

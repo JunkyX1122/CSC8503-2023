@@ -17,7 +17,8 @@ enum BasicNetworkMessages {
 	Shutdown,
 	Player_Info,
 	GlobalPlayer_Info,
-	Player_DrawLine
+	Player_DrawLine,
+	Server_Information
 };
 
 struct GamePacket {

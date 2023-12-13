@@ -40,6 +40,7 @@ namespace NCL {
 			virtual void InitialiseGameAsClient();
 			virtual void DisconnectAsServer();
 			virtual void DisconnectAsClient();
+			virtual void SetLevelID(int i) { levelID = i; }
 			bool connected = true;
 		protected:
 #ifdef USEVULKAN
@@ -157,10 +158,14 @@ namespace NCL {
 			GameClient* gameClient = nullptr;
 			float clientConnectionTimer = 3.0f;
 			
+			std::vector<std::string> worldDatas_Level = {};
+			std::vector<std::string> worldDatas_Item = {};
+			int levelID = -1;
 			std::string levelDataBeingUsed;
 			std::string itemDataBeingUsed;
 
 			GameObject* itemCollectionZone;
+			bool initTheWorld = false;
 		};
 	}
 }

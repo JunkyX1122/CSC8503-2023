@@ -112,6 +112,14 @@ namespace NCL::CSC8503 {
 		}
 	};
 
+	struct ServerInformation : public GamePacket
+	{
+		int levelID;
+		ServerInformation() {
+			type = Server_Information;
+			size = sizeof(ServerInformation);
+		}
+	};
 	class NetworkObject		{
 	public:
 		NetworkObject(GameObject& o, int id);
