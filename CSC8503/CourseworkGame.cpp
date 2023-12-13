@@ -356,7 +356,8 @@ void CourseworkGame::UpdateServerBonusObjects(float dt)
 		std::map<int, GameObject*> tempList = pO.second->GetItemsCollected();
 		for (auto iO : pO.second->GetItemsCollected())
 		{
-			iO.second->GetTransform().SetPosition(pO.second->GetTransform().GetPosition() + Vector3(0, 7.5f + 10.0f * numItems, 0));
+			Vector3 ori = iO.second->GetTransform().GetOrientation().ToEuler();
+			iO.second->GetTransform().SetPosition(pO.second->GetTransform().GetPosition() + Vector3(0, 7.5f + 10.0f * numItems, 0)).SetOrientation(Quaternion::EulerAnglesToQuaternion(ori.x, ori.y + 1.0f, ori.z));
 			iO.second->GetPhysicsObject()->SetLinearVelocity(Vector3(0, 0, 0));
 
 			if (iO.second->GetName() == "Item")
@@ -1167,11 +1168,20 @@ void CourseworkGame::GenerateItems()
 		{
 			char type = 0;
 			infile >> type;
-			Vector3 position = Vector3((float)(x * nodeSize), 0.25f, (float)(y * nodeSize));
+			Vector3 position = Vector3((float)(x * nodeSize), 500.0f, (float)(y * nodeSize));
+
 			if (isdigit(type))
 			{
 				int digit = (int(type) - 48);
-				bonusObjects.push_back(AddBonusToWorld(position, digit));
+
+				Ray ray(position, Vector3(0,-1,0));
+				RayCollision closestCollision;
+				if (world->Raycast(ray, closestCollision, true, nullptr))
+				{
+					//Debug::DrawLine(ray.GetPosition(), closestCollision.collidedAt, Vector4(1.0f, 0, 1, 1), 500.0f);
+					bonusObjects.push_back(AddBonusToWorld(closestCollision.collidedAt + Vector3(0,0.25f,0), digit));
+				}
+				
 			}
 		}
 	}
@@ -1349,13 +1359,15 @@ BonusObject* CourseworkGame::AddBonusToWorld(const Vector3& position, int type) 
 	BonusObject* apple = new BonusObject();
 	bool mostValuableBool = type == 9;
 	apple->SetName("Item");
-	apple->SetValue(mostValuableBool ? 200 : 10 + 10 * type);
+	apple->SetValue(mostValuableBool ? 500 : 10 + 15 * type + ((int)round(std::pow(2.0f, std::max(1.0f, type * 0.65f)))) + RandomValue(0,14));
 	SphereVolume* volume = new SphereVolume(3.5f, LAYER_ITEM);
 	apple->SetBoundingVolume((CollisionVolume*)volume);
 	apple->GetTransform()
-		.SetScale(mostValuableBool ? Vector3 (6,6,6) : Vector3(2, 2, 2))
-		.SetPosition(position);
+		.SetScale(mostValuableBool ? Vector3 (6,6,6) : Vector3(1, 1, 1) * (1.0f + 2.0f/7.0f * type))
+		.SetPosition(position)
+		.SetOrientation(Quaternion::EulerAnglesToQuaternion(0,RandomValue(0.0f, 360.0f),0));
 	apple->SetInitialPosition(position);
+	apple->SetPositionToDampenTo(position);
 	for (auto eO : enemyObjects)
 	{
 		apple->AddToIgnoreList(eO);
