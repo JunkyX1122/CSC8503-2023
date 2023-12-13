@@ -27,7 +27,7 @@ const char IS_UP = '0';
 const char IS_PRESSED = '1';
 const char IS_DOWN = '2';
 
-const float SERVER_CONNECTION_TIMELIMIT = 5.0f;
+const float SERVER_CONNECTION_TIMELIMIT = 1.0f;
 const float CONNECTION_TIMEOUT = 5.0f;
 
 const float GAME_TIMELIMIT = 60.0f * 3;
@@ -81,6 +81,8 @@ void CourseworkGame::EraseWorld()
 	playerState.clear();
 	enemyObjects.clear();
 	bonusObjects.clear();
+	//worldDatas_Level.clear();
+	//worldDatas_Item.clear();
 	itemCollectionZone = nullptr;
 }
 void CourseworkGame::InitialiseAssets()
@@ -98,10 +100,14 @@ void CourseworkGame::InitialiseAssets()
 	basicShader = renderer->LoadShader("scene.vert", "scene.frag");
 	//levelDataBeingUsed = "LevelGrid1.txt";
 	//itemDataBeingUsed = "ItemGrid1.txt";
+	worldDatas_Level.push_back("LevelGridTest.txt");
+	worldDatas_Level.push_back("LevelGridTest2.txt");
 	worldDatas_Level.push_back("LevelGrid1.txt");
-	worldDatas_Level.push_back("LevelGrid0.txt");
+	
+	worldDatas_Item.push_back("ItemGridTest.txt");
+	worldDatas_Item.push_back("ItemGridTest2.txt");
 	worldDatas_Item.push_back("ItemGrid1.txt");
-	worldDatas_Item.push_back("ItemGrid0.txt");
+	
 }
 
 void CourseworkGame::InitialiseGameAsServer()
@@ -109,6 +115,7 @@ void CourseworkGame::InitialiseGameAsServer()
 	std::cout << "Started World As Server\n";
 	numberOfActivePlayers = 0;
 	gameTimer = GAME_JOIN_TIMER;
+	gameState = GAME_NOTSTARTED;
 	InitialiseAssets();
 
 	levelDataBeingUsed = worldDatas_Level[levelID];
