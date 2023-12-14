@@ -14,7 +14,8 @@ class IntroScreen : public PushdownState
 		for (int i = 0; i < options.size(); i++)
 		{
 			bool selected = selectedOption == i;
-			Debug::Print((selected && menuSelect == 0 ? "> " : "") + options[i], Vector2(5, 15 + 5 * i), (selected && menuSelect == 0) ? colors[i] : Vector4(0.05, 0.05, 0.05, 1));
+			std::string optionsText = options[i];
+			Debug::Print((selected && menuSelect == 0 ? "> " : "") + optionsText, Vector2(5, 15 + 5 * i), (selected && menuSelect == 0) ? colors[i] : Vector4(0.05, 0.05, 0.05, 1));
 		}
 
 		for (int i = 0; i < optionsLevel.size(); i++)
@@ -72,7 +73,7 @@ class IntroScreen : public PushdownState
 			{
 			case(0):
 				passedTag = "Start Server";
-				windowRef->SetWindowPosition(-1920, 0);
+				//windowRef->SetWindowPosition(-1920, 0);
 				gameRef->SetLevelID(selectedLevel);
 				gameRef->InitialiseGameAsServer();
 				*newState = new GameScreen(gameRef, true);
@@ -81,12 +82,17 @@ class IntroScreen : public PushdownState
 			case(1):
 
 				passedTag = "Start Client";
-				windowRef->SetWindowPosition(0, 0);
+				//windowRef->SetWindowPosition(0, 0);
 				gameRef->SetLevelID(-1);
 				gameRef->InitialiseGameAsClient();
 				*newState = new GameScreen(gameRef, false);
 				return PushdownResult::Push;
 				break;
+
+			case(2):
+				funnyScroll = 0;
+				break;
+
 			case(3):
 				return PushdownResult::Pop;
 				break;
@@ -94,7 +100,11 @@ class IntroScreen : public PushdownState
 		}
 	
 		
-
+		if (funnyScroll < PI)
+		{
+			Debug::Print("Everything - me lmao :)", Vector2(5, 120 - 80 * sin(funnyScroll)), colors[2]);
+			funnyScroll += (PI / 5.0f) * dt;
+		}
 		gameRef->UpdateOuter(dt);
 		return PushdownResult::NoChange;
 		
@@ -129,13 +139,15 @@ protected:
 	int menuSelect = 0;
 	int selectedLevel = 0;
 	bool failedToConnect = false;
+	float funnyScroll = PI;
 	std::vector<std::string> options = 
 	{
 		"Start Game As Server",
 		"Join Server",
-		"Credits or something",
+		"Credits",
 		"LEAVE"
 	};
+
 	std::vector<Vector4> colors =
 	{
 		Vector4(0.25,1,0.25,1),

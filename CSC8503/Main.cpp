@@ -361,7 +361,7 @@ hide or show the
 
 */
 int main() {
-	Window* w = Window::CreateGameWindow("CSC8503 Game technology!", 1280, 720);
+	Window* w = Window::CreateGameWindow("CSC8503 Game technology!", 960, 540);
 	//Window* w = Window::CreateGameWindow("CSC8503 Game technology!", 640, 480);
 
 	if (!w->HasInitialised()) {
@@ -387,7 +387,7 @@ int main() {
 	bool game = true;
 	w->GetTimer().GetTimeDeltaSeconds(); //Clear the timer so we don't get a larget first dt!
 	bool endGame = false;
-
+	int windowNumber = 1;
 	while (w->UpdateWindow() && !Window::GetKeyboard()->KeyDown(KeyCodes::ESCAPE) && !endGame) {
 		float dt = w->GetTimer().GetTimeDeltaSeconds();
 		if (game)
@@ -404,14 +404,25 @@ int main() {
 				if (Window::GetKeyboard()->KeyPressed(KeyCodes::NEXT)) {
 					w->ShowConsole(false);
 				}
-				if (Window::GetKeyboard()->KeyPressed(KeyCodes::NUM9)) {
-					w->SetWindowPosition(0, 420);
+				if (Window::GetKeyboard()->KeyPressed(KeyCodes::NUM1)) {
+					w->SetWindowPosition(0, 0);
+					windowNumber = 1;
 				}
-				if (Window::GetKeyboard()->KeyPressed(KeyCodes::NUM0)) {
-					w->SetWindowPosition(640, 420);
+				if (Window::GetKeyboard()->KeyPressed(KeyCodes::NUM2)) {
+					w->SetWindowPosition(960, 0);
+					windowNumber = 2;
+				}
+				if (Window::GetKeyboard()->KeyPressed(KeyCodes::NUM3)) {
+					w->SetWindowPosition(0, 540);
+					windowNumber = 3;
+				}
+				if (Window::GetKeyboard()->KeyPressed(KeyCodes::NUM4)) {
+					w->SetWindowPosition(960, 540);
+					windowNumber = 4;
 				}
 
-				w->SetTitle("Gametech frame time:" + std::to_string(1000.0f * dt));
+				//w->SetTitle("Gametech frame time:" + std::to_string(1000.0f * dt));
+				w->SetTitle("Window:" + std::to_string(windowNumber));
 				//g->UpdateGame(dt);
 				if (!machine.Update(dt))
 				{

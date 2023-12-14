@@ -1410,6 +1410,7 @@ EnemyObject* CourseworkGame::AddEnemyToWorld(const Vector3& position) {
 	CapsuleVolume* volume = new CapsuleVolume(meshSize, meshSize, LAYER_ENEMY);
 
 	character->SetObjectTarget(playerObject[0]);
+
 	std::vector<GameObject*> targetable;
 	for (auto pO : playerObject)
 	{
